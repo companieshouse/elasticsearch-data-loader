@@ -134,40 +134,16 @@ var (
 )
 
 // ---------------------------------------------------------------------------
-
-type mongoAddress struct {
-	AddressLine1 string `bson:"address_line_1"`
-	AddressLine2 string `bson:"address_line_2"`
-	CareOf       string `bson:"care_of"`
-	Country      string `bson:"country"`
-	Locality     string `bson:"locality"`
-	PoBox        string `bson:"po_box"`
-	PostalCode   string `bson:"postal_code"`
-	Premises     string `bson:"premises"`
-	Region       string `bson:"region"`
-}
-
-type mongoPreviousName struct {
-	CeasedOn time.Time `bson:"ceased_on"`
-	Name     string    `bson:"name"`
-}
-
 type mongoLinks struct {
 	Self string `bson:"self"`
 }
 
 type mongoData struct {
-	Address       mongoAddress        `bson:"registered_office_address"`
 	CompanyName   string              `bson:"company_name"`
 	CompanyNumber string              `bson:"company_number"`
 	CompanyStatus string              `bson:"company_status"`
 	CompanyType   string              `bson:"type"`
-	DissDate      time.Time           `bson:"date_of_dissolution"`
-	ExtRegNumber  string              `bson:"external_registration_number"`
-	IncDate       time.Time           `bson:"date_of_creation"`
-	PreviousNames []mongoPreviousName `bson:"previous_company_names"`
 	Links         mongoLinks          `bson:"links"`
-	Sics          []string            `bson:"sic_codes"`
 }
 
 type mongoCompany struct {
@@ -177,40 +153,12 @@ type mongoCompany struct {
 
 // ---------------------------------------------------------------------------
 
-type esAddress struct {
-	CareOf       string `json:"care_of,omitempty"`
-	AddressLine1 string `json:"address_line_1,omitempty"`
-	AddressLine2 string `json:"address_line_2,omitempty"`
-	Country      string `json:"country,omitempty"`
-	Locality     string `json:"locality,omitempty"`
-	PoBox        string `json:"po_box,omitempty"`
-	PostalCode   string `json:"postal_code,omitempty"`
-	Premises     string `json:"premises,omitempty"`
-	Region       string `json:"region,omitempty"`
-}
-
 type esItem struct {
-	Address       esAddress `json:"address,omitempty"`
-	CeasedOn      string    `json:"ceased_on,omitempty"`
-	CompanyNumber string    `json:"company_number"`
-	CompanyStatus string    `json:"company_status,omitempty"`
-	CorporateName string    `json:"corporate_name"`
-	//CorporateNameStart     string            `json:"corporate_name_start"`
-	//CorporateNameEnding    string            `json:"corporate_name_ending,omitempty"`
-	PreviousCorporateNames []esPreviousNames `json:"previous_corporate_names,omitempty"`
-	IncDate                string            `json:"date_of_creation,omitempty"`
-	DissDate               string            `json:"date_of_cessation,omitempty"`
-	ExtRegNumber           string            `json:"external_registration_number,omitempty"`
-	FullAddress            string            `json:"full_address,omitempty"`
-	Sics                   []string          `json:"sic_codes,omitempty"`
-	SameAsKey              string            `json:"same_as_key"`
-	WildCardKey            string            `json:"wildcard_key"`
-	RecordType             string            `json:"record_type"`
-}
-
-type esPreviousNames struct {
-	PreviousName string `json:"previous_name"`
-	CeasedOn     string `json:"ceased_on,omitempty"`
+	CompanyNumber 				 string    `json:"company_number"`
+	CompanyStatus 				 string    `json:"company_status,omitempty"`
+	CorporateName 				 string    `json:"corporate_name"`
+	CorporateNameStart     string    `json:"corporate_name_start"`
+	CorporateNameEnding    string    `json:"corporate_name_ending,omitempty"`
 }
 
 type esLinks struct {
@@ -223,7 +171,6 @@ type esCompany struct {
 	Items       esItem   `json:"items"`
 	Kind        string   `json:"kind"`
 	Links       *esLinks `json:"links"`
-	SortKey     string   `json:"sort_key"`
 }
 
 type esBulkResponse struct {
