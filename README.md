@@ -1,17 +1,15 @@
 # elasticsearch-data-loader
 Loads data from MongoDB into ElasticSearch
 
-## Icwmportant
+## Important
 When loading indices for development environments, the number of replica sets must be set as appropraite.
 This can be tweaked in `config/all_scheme.json` but **do not** check in this change.
 
 ## Examples
 ```bash
 ./run-elastic-search -s company -e enva.es.ch.gov.uk:9400 -i primary_search -m chs-pp-mes-sl2.ch.gov.uk:27019 -u admin -p admin -a http://chs-alphakey-pp.internal.ch -c false
-
-Example of running on Sundance and your localhost
-./run-elastic-search.sh -s company -e es7-search-server1-shaun.aws.chdev.org:9200 -i primary_search -m mongo-db1-sundance.dev.aws.internal -a http://localhost:4025 -c true
 ```
+
 
 * Anything to be executed should be executed from the project root — ie this directory.
 
