@@ -376,7 +376,8 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 
 // ---------------------------------------------------------------------------
 
-func nameNibbles(name string) (string, string) {
+//Split company name into nameStart and nameEnding in order to remove common name endings
+func splitCompanyNameEndings(name string) (string, string) {
 	var nameStart, nameEnding string
 
 	nameStart = name
@@ -422,7 +423,7 @@ func (c *connections) mapResult(source *mongoCompany, sameAsKey string, sortKey 
 	}
 
 	name := source.Data.CompanyName
-	nameStart, nameEnding := nameNibbles(source.Data.CompanyName)
+	nameStart, nameEnding := splitCompanyNameEndings(source.Data.CompanyName)
 
 	items := esItem{
 		CompanyStatus:       source.Data.CompanyStatus,
