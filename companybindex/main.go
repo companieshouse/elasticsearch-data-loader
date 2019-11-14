@@ -9,7 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	//	"strings"
+	"strings"
 
 	"regexp"
 	"sync"
@@ -139,11 +139,11 @@ type mongoLinks struct {
 }
 
 type mongoData struct {
-	CompanyName   string              `bson:"company_name"`
-	CompanyNumber string              `bson:"company_number"`
-	CompanyStatus string              `bson:"company_status"`
-	CompanyType   string              `bson:"type"`
-	Links         mongoLinks          `bson:"links"`
+	CompanyName   string     `bson:"company_name"`
+	CompanyNumber string     `bson:"company_number"`
+	CompanyStatus string     `bson:"company_status"`
+	CompanyType   string     `bson:"type"`
+	Links         mongoLinks `bson:"links"`
 }
 
 type mongoCompany struct {
@@ -154,11 +154,12 @@ type mongoCompany struct {
 // ---------------------------------------------------------------------------
 
 type esItem struct {
-	CompanyNumber 				 string    `json:"company_number"`
-	CompanyStatus 				 string    `json:"company_status,omitempty"`
-	CorporateName 				 string    `json:"corporate_name"`
-	CorporateNameStart     string    `json:"corporate_name_start"`
-	CorporateNameEnding    string    `json:"corporate_name_ending,omitempty"`
+	CompanyNumber       string `json:"company_number"`
+	CompanyStatus       string `json:"company_status,omitempty"`
+	CorporateName       string `json:"corporate_name"`
+	CorporateNameStart  string `json:"corporate_name_start"`
+	CorporateNameEnding string `json:"corporate_name_ending,omitempty"`
+	RecordType          string `json:"record_type"`
 }
 
 type esLinks struct {
@@ -171,6 +172,7 @@ type esCompany struct {
 	Items       esItem   `json:"items"`
 	Kind        string   `json:"kind"`
 	Links       *esLinks `json:"links"`
+	SortKey     string   `json:"sort_key"`
 }
 
 type esBulkResponse struct {
@@ -182,7 +184,7 @@ type esBulkResponse struct {
 type esBulkItemResponse map[string]esBulkItemResponseData
 
 type esBulkItemResponseData struct {
-	Index string `json:"_index"`
+	Index  string `json:"_index"`
 	ID     string `json:"_id"`
 	Status int    `json:"status"`
 	Error  string `json:"error"`
@@ -419,32 +421,16 @@ func (c *connections) mapResult(source *mongoCompany, sameAsKey string, sortKey 
 		Links:       &esLinks{fmt.Sprintf("/company/%s", source.ID)},
 	}
 
-	var incdate string
-	if !source.Data.IncDate.IsZero() {
-		incdate = source.Data.IncDate.Format("2006-01-02")
-	}
-
-	var dissdate string
-	if !source.Data.DissDate.IsZero() {
-		dissdate = source.Data.DissDate.Format("2006-01-02")
-	}
-
-	var extregnumber string
-	if source.Data.ExtRegNumber != "" {
-		extregnumber = source.Data.ExtRegNumber
-	}
-
-	esAddr, fullAddr := address(&source.Data.Address)
 	name := source.Data.CompanyName
 	nameStart, nameEnding := nameNibbles(source.Data.CompanyName)
 
 	items := esItem{
-		CompanyStatus:          source.Data.CompanyStatus,
-		CompanyNumber:          source.Data.CompanyNumber,
-		CorporateName:          name,
-		CorporateNameStart:  		nameStart,
-		CorporateNameEnding: 		nameEnding,
-		RecordType:   "companies",
+		CompanyStatus:       source.Data.CompanyStatus,
+		CompanyNumber:       source.Data.CompanyNumber,
+		CorporateName:       name,
+		CorporateNameStart:  nameStart,
+		CorporateNameEnding: nameEnding,
+		RecordType:          "companies",
 	}
 
 	// Appended sort key with value of 0 for all search; this enables companies
