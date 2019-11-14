@@ -183,7 +183,6 @@ type esBulkItemResponse map[string]esBulkItemResponseData
 
 type esBulkItemResponseData struct {
 	Index string `json:"_index"`
-	//Type   string `json:"_type"`
 	ID     string `json:"_id"`
 	Status int    `json:"status"`
 	Error  string `json:"error"`
@@ -337,7 +336,6 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 			i++
 		}
 
-		// r, err := http.Post(esDestURL+"/"+esDestIndex+"/"+esDestType+"/_bulk", "application/json", bytes.NewReader(bulk))
 		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", "application/json", bytes.NewReader(bulk))
 		if err != nil {
 			writeToFile(c.connection1, filename1, string(bunchOfNamesAndNumbers))
@@ -376,118 +374,23 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 
 // ---------------------------------------------------------------------------
 
-func address(addr *mongoAddress) (*esAddress, *[]byte) {
-
-	// Populating the "premises" field if not set
-	// In future this will be populated upstream in CHIPs or on ingest into CHS
-	address := populateAddressPremises(addr)
-
-	fulladdress := make([]byte, 2048)
-	esAddr := esAddress{}
-	p := 0
-	if len(address.CareOf) > 0 {
-		esAddr.CareOf = address.CareOf
-		p += copy(fulladdress[p:], address.CareOf)
-		p += copy(fulladdress[p:], ", ")
-	}
-	if len(address.PoBox) > 0 {
-		esAddr.PoBox = address.PoBox
-		p += copy(fulladdress[p:], address.PoBox)
-		p += copy(fulladdress[p:], ", ")
-	}
-	if len(address.Premises) > 0 {
-		esAddr.Premises = address.Premises
-		p += copy(fulladdress[p:], address.Premises)
-
-		if numberRegex.Match([]byte(address.Premises)) {
-			p += copy(fulladdress[p:], " ")
-		} else {
-			p += copy(fulladdress[p:], ", ")
-		}
-	}
-	if len(address.AddressLine1) > 0 {
-		esAddr.AddressLine1 = address.AddressLine1
-		p += copy(fulladdress[p:], address.AddressLine1)
-		p += copy(fulladdress[p:], ", ")
-	}
-	if len(address.AddressLine2) > 0 {
-		esAddr.AddressLine2 = address.AddressLine2
-		p += copy(fulladdress[p:], address.AddressLine2)
-		p += copy(fulladdress[p:], ", ")
-	}
-	if len(addr.Locality) > 0 {
-		esAddr.Locality = address.Locality
-		p += copy(fulladdress[p:], address.Locality)
-		p += copy(fulladdress[p:], ", ")
-	}
-	if len(address.Region) > 0 {
-		esAddr.Region = address.Region
-		p += copy(fulladdress[p:], addr.Region)
-		p += copy(fulladdress[p:], ", ")
-	}
-	if len(address.Country) > 0 {
-		esAddr.Country = address.Country
-		p += copy(fulladdress[p:], address.Country)
-		p += copy(fulladdress[p:], ", ")
-	}
-	if len(address.PostalCode) > 0 {
-		esAddr.PostalCode = address.PostalCode
-		p += copy(fulladdress[p:], addr.PostalCode)
-		p += copy(fulladdress[p:], ", ")
-	}
-
-	if p > 0 {
-		fulladdress = fulladdress[:p-2]
-	} else {
-		fulladdress = []byte("")
-	}
-
-	return &esAddr, &fulladdress
-}
-
-// ---------------------------------------------------------------------------
-
-func populateAddressPremises(address *mongoAddress) *mongoAddress {
-	if (len(address.Premises) > 0) || (len(address.AddressLine1) < 1) {
-		return address
-	}
-
-	originalAddress := address.AddressLine1
-	premises := findPremiseRegex.FindString(originalAddress)
-	addressLine1 := findPremiseRegex.ReplaceAllString(originalAddress, "")
-
-	if premises != "" {
-		address.Premises = premises
-		address.AddressLine1 = addressLine1
-		return address
-	}
-
-	address.Premises = address.AddressLine1
-	address.AddressLine1 = address.AddressLine2
-	address.AddressLine2 = ""
-
-	return address
-}
-
-// ---------------------------------------------------------------------------
-
 func nameNibbles(name string) (string, string) {
 	var nameStart, nameEnding string
 
 	nameStart = name
 
-	// Strip trailing non-word characters [^a-zA-Z0-9_]
-	//stripped := nonWordEndRegex.ReplaceAllString(name, "")
+	//Strip trailing non-word characters [^a-zA-Z0-9_]
+	stripped := nonWordEndRegex.ReplaceAllString(name, "")
 
-	// Scan company name for name ending and remove suffix
-	// for _, cne := range companyNameEndings {
-	// 	if strings.HasSuffix(stripped, cne) {
-	// 		nameStart = strings.TrimSuffix(stripped, " "+cne)
-	// 		// Keep the actual name ending by extracted the name start
-	// 		nameEnding = name[len(nameStart):]
-	// 		break
-	// 	}
-	// }
+	//Scan company name for name ending and remove suffix
+	for _, cne := range companyNameEndings {
+		if strings.HasSuffix(stripped, cne) {
+			nameStart = strings.TrimSuffix(stripped, " "+cne)
+			// Keep the actual name ending by extracted the name start
+			nameEnding = name[len(nameStart):]
+			break
+		}
+	}
 
 	return nameStart, nameEnding
 }
@@ -533,34 +436,16 @@ func (c *connections) mapResult(source *mongoCompany, sameAsKey string, sortKey 
 
 	esAddr, fullAddr := address(&source.Data.Address)
 	name := source.Data.CompanyName
-	//nameStart, nameEnding := nameNibbles(source.Data.CompanyName)
+	nameStart, nameEnding := nameNibbles(source.Data.CompanyName)
 
 	items := esItem{
-		Address:                *esAddr,
-		FullAddress:            string(*fullAddr),
 		CompanyStatus:          source.Data.CompanyStatus,
 		CompanyNumber:          source.Data.CompanyNumber,
 		CorporateName:          name,
-		PreviousCorporateNames: setPreviousNames(source.Data.PreviousNames),
-		Sics:         source.Data.Sics,
-		DissDate:     dissdate,
-		IncDate:      incdate,
-		ExtRegNumber: extregnumber,
-		SameAsKey:    sameAsKey,
-		WildCardKey:  sortKey,
+		CorporateNameStart:  		nameStart,
+		CorporateNameEnding: 		nameEnding,
 		RecordType:   "companies",
 	}
-
-	// // items[1 .. n-1] only need to contain changes (but dissdate needed for match decay)
-	// for _, v := range source.Data.PreviousNames {
-	// 	var item esItem
-	// 	item.CeasedOn = v.CeasedOn.Format("2006-01-02")
-	// 	item.CorporateNameStart, _ = nameNibbles(v.Name)
-	// 	item.FullAddress = items[0].FullAddress
-	// 	item.DissDate = dissdate
-	// 	item.RecordType = "companies"
-	// 	items = append(items, item)
-	// }
 
 	// Appended sort key with value of 0 for all search; this enables companies
 	// to appear ahead of disqualified officers (appended with 1) and officers
@@ -570,17 +455,6 @@ func (c *connections) mapResult(source *mongoCompany, sameAsKey string, sortKey 
 	dest.Items = items
 
 	return &dest
-}
-
-func setPreviousNames(source []mongoPreviousName) []esPreviousNames {
-	previousCompanyNames := []esPreviousNames{}
-	for _, v := range source {
-		var previousCompanyName esPreviousNames
-		previousCompanyName.CeasedOn = v.CeasedOn.Format("2006-01-02")
-		previousCompanyName.PreviousName, _ = nameNibbles(v.Name)
-		previousCompanyNames = append(previousCompanyNames, previousCompanyName)
-	}
-	return previousCompanyNames
 }
 
 // ---------------------------------------------------------------------------
