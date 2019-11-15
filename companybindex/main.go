@@ -28,9 +28,7 @@ var (
 )
 
 var (
-	numberRegex      = regexp.MustCompile(`\d+`)
-	findPremiseRegex = regexp.MustCompile(`^(\d+[\/\-]*\w*\s*|[a-zA-Z]+\s+\d+[a-zA-Z]*\W*\s*)`)
-	nonWordEndRegex  = regexp.MustCompile(`[^A-Za-z0-9_]+$`)
+	nonWordEndRegex = regexp.MustCompile(`[^A-Za-z0-9_]+$`)
 )
 
 var (
@@ -45,12 +43,12 @@ var (
 )
 
 var (
-	wg sync.WaitGroup
+	syncWaitGroup sync.WaitGroup
 
-	countCh  = make(chan int)
-	insertCh = make(chan int)
-	skipCh   = make(chan int)
-	sem      = make(chan int, 5)
+	countChannel  = make(chan int)
+	insertChannel = make(chan int)
+	skipChannel   = make(chan int)
+	semaphore     = make(chan int, 5)
 )
 
 var companyNameEndings = [...]string{
@@ -134,6 +132,7 @@ var (
 )
 
 // ---------------------------------------------------------------------------
+
 type mongoLinks struct {
 	Self string `bson:"self"`
 }
@@ -172,7 +171,6 @@ type esCompany struct {
 	Items       esItem   `json:"items"`
 	Kind        string   `json:"kind"`
 	Links       *esLinks `json:"links"`
-	SortKey     string   `json:"sort_key"`
 }
 
 type esBulkResponse struct {
@@ -265,12 +263,12 @@ func main() {
 			break
 		}
 
-		// This will block if we've reached our concurrecy limit (sem buffer size)
+		// This will block if we've reached our concurrency limit (sem buffer size)
 		c.sendToES(&companies, itx)
 	}
 
 	time.Sleep(20 * time.Second)
-	wg.Wait()
+	syncWaitGroup.Wait()
 	if err := connection1.Close(); err != nil {
 		log.Fatalf("error closing file: %s", err)
 	}
@@ -281,25 +279,28 @@ func main() {
 		log.Fatalf("error closing file: %s", err)
 	}
 
-	log.Println("COMPANY SEARCH DONE")
+	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
 }
 
 // ---------------------------------------------------------------------------
-// pass a reference to the slice of mongoCompany pointers, for efficiency,
-// otherwise golang will create a copy of the slice on the stack!
-//
+
+/*
+ pass a reference to the slice of mongoCompany pointers, for efficiency,
+ otherwise golang will create a copy of the slice on the stack!
+*/
 func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
+
 	// Wait on semaphore if we've reached our concurrency limit
-	wg.Add(1)
-	sem <- 1
+	syncWaitGroup.Add(1)
+	semaphore <- 1
 
 	go func() {
 		defer func() {
-			<-sem
-			wg.Done()
+			<-semaphore
+			syncWaitGroup.Done()
 		}()
 
-		countCh <- length
+		countChannel <- length
 		target := length
 
 		var bulk []byte
@@ -329,9 +330,9 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.id+"\" } }\n")...)
 				bulk = append(bulk, b...)
 				bulk = append(bulk, []byte("\n")...)
-				bunchOfNamesAndNumbers = append(bunchOfNamesAndNumbers, []byte("\n"+company.SortKey+" : "+company.id+"")...)
+				bunchOfNamesAndNumbers = append(bunchOfNamesAndNumbers, []byte("\n"+company.id+"")...)
 			} else {
-				skipCh <- 1
+				skipChannel <- 1
 				target--
 			}
 
@@ -370,7 +371,7 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 			}
 		}
 
-		insertCh <- target
+		insertChannel <- target
 	}()
 }
 
@@ -399,11 +400,14 @@ func splitCompanyNameEndings(name string) (string, string) {
 }
 
 // ---------------------------------------------------------------------------
-// Pass in a reference to mongoCompany, as golang is pass-by-value. This version, golang
-// will create a copy of mongoCompany on the stack for every call (which is good, as it
-// ensures imutability, but we want efficiency! Passing a ref to mongoCompany will be
-// MUCH quicker.
-//
+
+/*
+Pass in a reference to mongoCompany, as golang is pass-by-value. This version, golang
+will create a copy of mongoCompany on the stack for every call (which is good, as it
+ensures immutability, but we want efficiency! Passing a ref to mongoCompany will be
+MUCH quicker.
+*/
+
 func (c *connections) mapResult(source *mongoCompany, sameAsKey string, sortKey string) *esCompany {
 	if source.Data == nil {
 		log.Printf("Missing company data element")
@@ -434,11 +438,6 @@ func (c *connections) mapResult(source *mongoCompany, sameAsKey string, sortKey 
 		RecordType:          "companies",
 	}
 
-	// Appended sort key with value of 0 for all search; this enables companies
-	// to appear ahead of disqualified officers (appended with 1) and officers
-	// (appended with 2) if score of multiple results spanning the different data
-	// sets are equal.
-	dest.SortKey = sortKey + "0"
 	dest.Items = items
 
 	return &dest
@@ -460,13 +459,13 @@ func status() {
 
 	for {
 		select {
-		case n := <-skipCh:
+		case n := <-skipChannel:
 			skipCounter += n
 			skipTotal += n
-		case n := <-countCh:
+		case n := <-countChannel:
 			rpsCounter += n
 			reqTotal += n
-		case n := <-insertCh:
+		case n := <-insertChannel:
 			insCounter += n
 			insTotal += n
 		case <-t.C:
@@ -481,7 +480,7 @@ func status() {
 // ------------------------------------------------------------------------------
 
 func corporateAlphaKeys(corporateNames []string, length int) []byte {
-	items := []companyName{}
+	var items []companyName
 	for i := 0; i < length; i++ {
 		name := corporateNames[i]
 		var newItem companyName

@@ -73,7 +73,7 @@ echo "      alphakey url: $alphakey_url"
 if [ $search = "company" ]
 then
     bindex="./companybindex/companybindex"
-    scheme="all_scheme.json"
+    scheme="search_scheme.json"
 else
     echo "Incorrect search - use company"
     echo "Use -h for further options"
@@ -128,6 +128,6 @@ echo "bindex: $bindex"
 
 echo "-----------------------------------"
 echo "STEP 3: Start $type load"
-upload="$bindex -mongo-url=$full_mongo_url -es-dest-url=http://$es_url -es-dest-type=primary_search -alphakey-url=$alphakey_url -es-dest-index=$index"
+upload="$bindex -mongo-url=$full_mongo_url -es-dest-url=http://$es_url -es-dest-type=alpha_search -alphakey-url=$alphakey_url -es-dest-index=$index"
 echo $upload
 exec $upload
