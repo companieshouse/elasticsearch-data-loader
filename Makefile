@@ -43,16 +43,6 @@ clean:
 	rm -f *.zip
 	rm -rf build-*
 
-# To be re-added once companybindex, config and run-elastic-search,sh are present on master
-# .PHONY: package
-# package:
-# 	$(eval tmpdir:=$(shell mktemp -d build-XXXXXXXXXX))
-# 	cp -r ./$(cb) $(tmpdir)/$(cb)
-# 	cp ./run-elastic-search.sh $(tmpdir)/run-elastic-search.sh
-# 	cp -r ./config $(tmpdir)/config
-# 	zip -r $(bin)-$(version).zip $(tmpdir)
-# 	rm -rf $(tmpdir)
-
 .PHONY: dist
 dist: clean build package
 
