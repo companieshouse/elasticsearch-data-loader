@@ -30,8 +30,8 @@ build: fmt
 test: test-unit test-integration
 
 .PHONY: test-unit
-test-unit: test-deps
-	@set -a; go test $(TESTS) -run 'Unit'
+test-unit:
+  go test $(TESTS) -run 'Unit'
 
 .PHONY: test-integration
 test-integration:
@@ -43,14 +43,15 @@ clean:
 	rm -f *.zip
 	rm -rf build-*
 
-.PHONY: package
-package:
-	$(eval tmpdir:=$(shell mktemp -d build-XXXXXXXXXX))
-	cp -r ./$(cb) $(tmpdir)/$(cb)
-	cp ./run-elastic-search.sh $(tmpdir)/run-elastic-search.sh
-	cp -r ./config $(tmpdir)/config
-	zip -r $(bin)-$(version).zip $(tmpdir)
-	rm -rf $(tmpdir)
+# To be re-added once companybindex, config and run-elastic-search,sh are present on master
+# .PHONY: package
+# package:
+# 	$(eval tmpdir:=$(shell mktemp -d build-XXXXXXXXXX))
+# 	cp -r ./$(cb) $(tmpdir)/$(cb)
+# 	cp ./run-elastic-search.sh $(tmpdir)/run-elastic-search.sh
+# 	cp -r ./config $(tmpdir)/config
+# 	zip -r $(bin)-$(version).zip $(tmpdir)
+# 	rm -rf $(tmpdir)
 
 .PHONY: dist
 dist: clean build package
@@ -58,7 +59,7 @@ dist: clean build package
 .PHONY: xunit-tests
 xunit-tests: test-deps
 	go get github.com/tebeka/go2xunit
-	@set -a; go test -v $(TESTS) -run 'Unit' | go2xunit -output $(xunit_output)
+	go test -v $(TESTS) -run 'Unit' | go2xunit -output $(xunit_output)
 
 .PHONY: lint
 lint:
