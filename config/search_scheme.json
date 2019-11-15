@@ -5,17 +5,15 @@
       "number_of_shards": 5,
       "analysis": {
         "analyzer": {
-          "analyzer_standard_whitespace": {
+          "analyzer_whitespace_token": {
             "type": "custom",
             "tokenizer": "whitespace",
             "filter": [
               "lowercase",
-              "filter_ascii_folding",
-              "filter_synonyms",
-              "filter_stop_words"
+              "filter_ascii_folding"
             ]
           },
-           "analyzer_keyword_sort": {
+           "analyzer_keyword_token_sort": {
             "type": "custom",
             "tokenizer": "keyword",
             "char_filter": [
@@ -29,59 +27,16 @@
               "filter_whitespace_remove"
             ]
           },
-          "analyzer_starts_with": {
-            "tokenizer": "keyword",
-            "filter": [
-              "lowercase"
-            ]
-          },
-          "analyzer_edge_ngram": {
+          "analyzer_edge_ngram_token": {
             "type": "custom",
-            "tokenizer": "edge_ngram_tokensizer",
+            "tokenizer": "edge_ngram_tokenizer",
             "filter": [
               "lowercase", 
               "filter_ascii_folding"
             ]
-          },
-          "analyzer_shingle": {
-            "type": "custom",
-            "tokenizer": "standard",
-            "filter": [
-              "lowercase", 
-              "filter_ascii_folding",
-              "filter_shingle"
-            ]
           }
         },
         "filter": {
-          "filter_synonyms": {
-            "type": "synonym",
-            "synonyms": [
-              "cbc, cwmni buddiant cymunedol=>cbc",
-              "ccc, cwmni cyfyngedig cyhoeddus=>ccc",
-              "cic, community interest company=>cic",
-              "community interest public limited company, community interest plc=>ciplc",
-              "cwmni buddiant ccc, cwmni buddiant cymunedol ccc, cwmni buddiant cymunedol cyhoeddus cyfyngedig=>cbccc",
-              "cyf, cyfyngedig=>cyf",
-              "eeig, european economic interest grouping=>eeig",
-              "icvc, investment company with variable capital=>icvc",
-              "limited, ltd, limited the=>ltd",
-              "llp, limited liability partnership=>llp",
-              "lp, limited partnership=>lp",
-              "oeic, open-ended investment company=>oeic",
-              "pcc, protected cell company=>pcc",
-              "plc, public limited company, public limited company the=>plc",
-              "unltd, unlimited=>unltd"
-            ]
-          },
-          "filter_stop_words": {
-            "type": "stop",
-            "stopwords": [
-              "cbc", "ccc", "cic", "ciplc", "cbccc", 
-              "cyf", "eeig", "icvc", "ltd", "llp", 
-              "lp", "oeic", "pcc", "plc", "unltd"
-            ]
-          },
            "filter_ascii_folding": {
             "type": "asciifolding",
             "preserve_original": true
@@ -90,17 +45,10 @@
             "type": "pattern_replace",
             "pattern": "\\s+",
             "replacement":""
-          },
-          "filter_shingle": {
-            "type": "shingle",
-            "max_shingle_size": 2,
-            "min_shingle_size": 2,
-            "output_unigrams": false,
-            "output_unigrams_if_no_shingles": true
           }
         },
         "tokenizer": {
-          "edge_ngram_tokensizer": {
+          "edge_ngram_tokenizer": {
             "type": "edge_ngram",
             "min_gram": 2,
             "max_gram": 20
@@ -128,31 +76,59 @@
         "index": "false",
         "type": "integer"
       },
+      "company_type": {
+        "type": "keyword",
+        "index": "false"
+      },
       "items": {
         "properties": {
+          "company_number": {
+            "type": "keyword",
+            "index": "false"
+          },
+          "company_status": {
+            "type": "keyword",
+            "index": "false"
+          },
           "corporate_name": {
+            "type": "keyword",
+            "index": "false"
+          },
+          "corporate_name_start": {
             "type": "text",
-            "analyzer": "analyzer_standard_whitespace",
+            "analyzer": "analyzer_whitespace_token",
             "fields": {
-                "sort": {
-                  "type": "text",
-                  "analyzer": "analyzer_keyword_sort",
-                  "fielddata": true
-              },
                 "edge_ngram": {
                   "type": "text",
-                  "analyzer": "analyzer_edge_ngram",
-                  "search_analyzer": "analyzer_standard_whitespace"
+                  "analyzer": "analyzer_edge_ngram_token",
+                  "search_analyzer": "analyzer_whitespace_token"
               },
-                "shingle": {
+                "sort": {
                   "type": "text",
-                  "analyzer": "analyzer_shingle"
-              },
-                "start_with": {
-                  "type": "text",
-                  "analyzer": "analyzer_starts_with"
+                  "analyzer": "analyzer_keyword_token_sort",
+                  "fielddata": true
               }
             }
+          },
+          "corporate_name_ending": {
+            "type": "keyword",
+            "index": "false"
+          },
+          "record_type": {
+            "type": "keyword",
+            "index": "false"
+          }
+        }
+      },
+      "kind": {
+        "type": "keyword",
+        "index": "false"
+      },
+      "links": {
+        "properties": {
+          "self": {
+            "type": "keyword",
+            "index": "false"
           }
         }
       }
