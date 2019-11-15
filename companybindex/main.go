@@ -318,8 +318,7 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 
 		i := 0
 		for i < length {
-			sameAsKey, sortKey := j[i].SameAsKey, j[i].SortKey
-			company := c.mapResult((*companies)[i], sameAsKey, sortKey)
+			company := c.mapResult((*companies)[i])
 
 			if company != nil {
 				b, err := json.Marshal(company)
@@ -408,7 +407,7 @@ ensures immutability, but we want efficiency! Passing a ref to mongoCompany will
 MUCH quicker.
 */
 
-func (c *connections) mapResult(source *mongoCompany, sameAsKey string, sortKey string) *esCompany {
+func (c *connections) mapResult(source *mongoCompany) *esCompany {
 	if source.Data == nil {
 		log.Printf("Missing company data element")
 		return nil
