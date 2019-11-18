@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
 	"github.com/companieshouse/elasticsearch-data-loader/mapping"
-	"github.com/companieshouse/elasticsearch-data-loader/mongo"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
 	"io/ioutil"
 	"log"
@@ -86,11 +86,11 @@ func main() {
 	it := s.DB(mongoDatabase).C(mongoCollection).Find(bson.M{}).Batch(mongoSize).Iter()
 
 	for {
-		companies := make([]*mongo.MongoCompany, mongoSize)
+		companies := make([]*datastructures.MongoCompany, mongoSize)
 
 		itx := 0
 		for ; itx < len(companies); itx++ {
-			result := mongo.MongoCompany{}
+			result := datastructures.MongoCompany{}
 
 			if !it.Next(&result) {
 				break
@@ -120,13 +120,13 @@ func main() {
  pass a reference to the slice of mongoCompany pointers, for efficiency,
  otherwise golang will create a copy of the slice on the stack!
 */
-func sendToES(companies *[]*mongo.MongoCompany, length int, w *write.Writer) {
+func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Writer) {
 
 	// Wait on semaphore if we've reached our concurrency limit
 	syncWaitGroup.Add(1)
 	semaphore <- 1
 
-	m := &mapping.Mapper{Writer:w}
+	m := &mapping.Mapper{Writer: w}
 
 	go func() {
 		defer func() {
@@ -200,7 +200,6 @@ func sendToES(companies *[]*mongo.MongoCompany, length int, w *write.Writer) {
 
 // ---------------------------------------------------------------------------
 
-
 func status() {
 	var (
 		rpsCounter  = 0
@@ -232,4 +231,3 @@ func status() {
 		}
 	}
 }
-

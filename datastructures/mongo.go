@@ -1,6 +1,4 @@
-package mongo
-
-
+package datastructures
 
 type MongoLinks struct {
 	Self string `bson:"self"`

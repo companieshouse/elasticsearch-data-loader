@@ -2,8 +2,8 @@ package mapping
 
 import (
 	"fmt"
+	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
 	"github.com/companieshouse/elasticsearch-data-loader/format"
-	"github.com/companieshouse/elasticsearch-data-loader/mongo"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
 	"log"
 )
@@ -11,40 +11,19 @@ import (
 const recordKind = "searchresults#company"
 
 type Mapping interface {
-	MapResult(source *mongo.MongoCompany) *esCompany
+	MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany
 }
 type Mapper struct {
 	Writer write.Write
 }
 
-type esCompany struct {
-	Id          string
-	CompanyType string   `json:"company_type"`
-	Items       esItem   `json:"items"`
-	Kind        string   `json:"kind"`
-	Links       *esLinks `json:"links"`
-}
-
-type esItem struct {
-	CompanyNumber       string `json:"company_number"`
-	CompanyStatus       string `json:"company_status,omitempty"`
-	CorporateName       string `json:"corporate_name"`
-	CorporateNameStart  string `json:"corporate_name_start"`
-	CorporateNameEnding string `json:"corporate_name_ending,omitempty"`
-	RecordType          string `json:"record_type"`
-}
-
-type esLinks struct {
-	Self string `json:"self"`
-}
 /*
 Pass in a reference to mongoCompany, as golang is pass-by-value. This version, golang
 will create a copy of mongoCompany on the stack for every call (which is good, as it
 ensures immutability, but we want efficiency! Passing a ref to mongoCompany will be
 MUCH quicker.
 */
-
-func (m *Mapper) MapResult(source *mongo.MongoCompany) *esCompany {
+func (m *Mapper) MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany {
 	if source.Data == nil {
 		log.Printf("Missing company data element")
 		return nil
@@ -55,11 +34,11 @@ func (m *Mapper) MapResult(source *mongo.MongoCompany) *esCompany {
 		return nil
 	}
 
-	dest := esCompany{
+	dest := datastructures.EsCompany{
 		Id:          source.ID,
 		CompanyType: source.Data.CompanyType,
 		Kind:        recordKind,
-		Links:       &esLinks{fmt.Sprintf("/company/%s", source.ID)},
+		Links:       &datastructures.EsLinks{Self: fmt.Sprintf("/company/%s", source.ID)},
 	}
 
 	name := source.Data.CompanyName
@@ -67,7 +46,7 @@ func (m *Mapper) MapResult(source *mongo.MongoCompany) *esCompany {
 	f := &format.Format{}
 	nameStart, nameEnding := f.SplitCompanyNameEndings(source.Data.CompanyName)
 
-	items := esItem{
+	items := datastructures.EsItem{
 		CompanyStatus:       source.Data.CompanyStatus,
 		CompanyNumber:       source.Data.CompanyNumber,
 		CorporateName:       name,
@@ -80,4 +59,3 @@ func (m *Mapper) MapResult(source *mongo.MongoCompany) *esCompany {
 
 	return &dest
 }
-
