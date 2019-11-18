@@ -249,8 +249,8 @@ func main() {
 			}
 			companies[itx] = &result
 		}
-		if itx == 0 { // No results read from iterator. Nothing more to do.
-			time.Sleep(time.Second * 30)
+		// No results read from iterator. Nothing more to do.
+		if itx == 0 {
 			break
 		}
 
@@ -258,7 +258,7 @@ func main() {
 		c.sendToES(&companies, itx)
 	}
 
-	time.Sleep(20 * time.Second)
+	time.Sleep(5 * time.Second)
 	syncWaitGroup.Wait()
 	if err := connection1.Close(); err != nil {
 		log.Fatalf("error closing file: %s", err)
