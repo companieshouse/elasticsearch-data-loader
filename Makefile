@@ -31,7 +31,7 @@ test: test-unit test-integration
 
 .PHONY: test-unit
 test-unit:
-  go test $(TESTS) -run 'Unit'
+	go test $(TESTS) -run 'Unit'
 
 .PHONY: test-integration
 test-integration:
@@ -47,11 +47,13 @@ clean:
 dist: clean build package
 
 .PHONY: xunit-tests
-xunit-tests: test-deps
+xunit-tests: GO111MODULE=off
+xunit-tests:
 	go get github.com/tebeka/go2xunit
 	go test -v $(TESTS) -run 'Unit' | go2xunit -output $(xunit_output)
 
 .PHONY: lint
+lint: GO111MODULE=off
 lint:
 	go get github.com/golang/lint/golint
 	golint ./... > $(lint_output)
