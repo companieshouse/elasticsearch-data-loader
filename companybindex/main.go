@@ -20,6 +20,7 @@ import (
 )
 
 const recordKind = "searchresults#company"
+const applicationJson = "application/json"
 
 var (
 	alphakeyURL = "http://chs-alphakey-pp.internal.ch"
@@ -319,7 +320,7 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 			i++
 		}
 
-		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", "application/json", bytes.NewReader(bulk))
+		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJson, bytes.NewReader(bulk))
 		if err != nil {
 			writeToFile(c.connection1, filename1, string(bunchOfNamesAndNumbers))
 			log.Printf("error posting request %s: data %s", err, string(bulk))
