@@ -188,15 +188,6 @@ type esBulkItemResponseData struct {
 	Error  string `json:"error"`
 }
 
-type companyName struct {
-	Name string `json:"name"`
-}
-
-type alphaKeys struct {
-	SameAsKey string `json:"sameAsAlphaKey"`
-	SortKey   string `json:"orderedAlphaKey"`
-}
-
 type connections struct {
 	connection1 *os.File
 	connection2 *os.File
@@ -305,16 +296,6 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 
 		var bulk []byte
 		var bunchOfNamesAndNumbers []byte
-
-		// Get a list of company names for bulk alpha key api
-		companyNames := getCompanyNames(companies, length)
-
-		keys := corporateAlphaKeys(companyNames, length)
-
-		var j []alphaKeys
-		if err := json.Unmarshal(keys, &j); err != nil {
-			log.Printf("error unmarshalling alphakey response for %s", keys)
-		}
 
 		i := 0
 		for i < length {
@@ -474,63 +455,6 @@ func status() {
 			skipCounter = 0
 		}
 	}
-}
-
-// ------------------------------------------------------------------------------
-
-func corporateAlphaKeys(corporateNames []string, length int) []byte {
-	var items []companyName
-	for i := 0; i < length; i++ {
-		name := corporateNames[i]
-		var newItem companyName
-		if name != "" {
-			newItem = companyName{Name: name}
-		} else {
-			newItem = companyName{Name: "no-name-test"}
-		}
-		items = append(items, newItem)
-	}
-
-	jsonStr, err := json.Marshal(items)
-	if err != nil {
-		log.Fatalf("error marshalling %s: %s", items, err)
-	}
-
-	uri := fmt.Sprintf("%s/alphakey-bulk", alphakeyURL)
-
-	r, err := http.NewRequest("POST", uri, bytes.NewBuffer(jsonStr))
-	if err != nil {
-		log.Fatalf(`error: %s with items: \n %s`, items, err)
-	}
-
-	r.Header.Set("Accept", "application/json")
-	r.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(r)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	b, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("error reading alphakey response body for %s: %s", items, err)
-	}
-
-	return b
-}
-
-// ------------------------------------------------------------------------------
-
-func getCompanyNames(companies *[]*mongoCompany, length int) []string {
-	var companyNameList []string
-	for i := 0; i < length; i++ {
-		companyName := (*companies)[i].Data.CompanyName
-		companyNameList = append(companyNameList, companyName)
-	}
-
-	return companyNameList
 }
 
 // ------------------------------------------------------------------------------
