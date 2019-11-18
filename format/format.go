@@ -85,7 +85,7 @@ type Formatter interface {
 	SplitCompanyNameEndings(name string) (string, string)
 }
 
-type Format struct {}
+type Format struct{}
 
 //SplitCompanyNameEndings splits company name into nameStart and nameEnding in order to remove common name endings
 func (f *Format) SplitCompanyNameEndings(name string) (string, string) {

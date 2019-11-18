@@ -1,11 +1,11 @@
-package elasticsearch_data_loader
+package main
 
 import (
 	"bytes"
-	"elasticsearch-data-loader/format"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"github.com/companieshouse/elasticsearch-data-loader/format"
 	"io/ioutil"
 	"log"
 	"net/http"
