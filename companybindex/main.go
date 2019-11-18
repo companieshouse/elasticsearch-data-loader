@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
-	"fmt"
-	"github.com/companieshouse/elasticsearch-data-loader/format"
+	"github.com/companieshouse/elasticsearch-data-loader/mapping"
+	"github.com/companieshouse/elasticsearch-data-loader/mongo"
+	"github.com/companieshouse/elasticsearch-data-loader/write"
 	"io/ioutil"
 	"log"
 	"net/http"
-	"os"
-
 	"sync"
 	"time"
 
@@ -18,7 +17,6 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const recordKind = "searchresults#company"
 const applicationJson = "application/json"
 
 var (
@@ -47,53 +45,7 @@ var (
 	semaphore     = make(chan int, 5)
 )
 
-var (
-	filename1 = "company-errors/error-posting-request.txt"
-	filename2 = "company-errors/unexpected-put-response.txt"
-	filename3 = "company-errors/missing-company-name.txt"
-)
-
 // ---------------------------------------------------------------------------
-
-type mongoLinks struct {
-	Self string `bson:"self"`
-}
-
-type mongoData struct {
-	CompanyName   string     `bson:"company_name"`
-	CompanyNumber string     `bson:"company_number"`
-	CompanyStatus string     `bson:"company_status"`
-	CompanyType   string     `bson:"type"`
-	Links         mongoLinks `bson:"links"`
-}
-
-type mongoCompany struct {
-	ID   string     `bson:"_id"`
-	Data *mongoData `bson:"data"`
-}
-
-// ---------------------------------------------------------------------------
-
-type esItem struct {
-	CompanyNumber       string `json:"company_number"`
-	CompanyStatus       string `json:"company_status,omitempty"`
-	CorporateName       string `json:"corporate_name"`
-	CorporateNameStart  string `json:"corporate_name_start"`
-	CorporateNameEnding string `json:"corporate_name_ending,omitempty"`
-	RecordType          string `json:"record_type"`
-}
-
-type esLinks struct {
-	Self string `json:"self"`
-}
-
-type esCompany struct {
-	id          string
-	CompanyType string   `json:"company_type"`
-	Items       esItem   `json:"items"`
-	Kind        string   `json:"kind"`
-	Links       *esLinks `json:"links"`
-}
 
 type esBulkResponse struct {
 	Took   int                  `json:"took"`
@@ -110,12 +62,6 @@ type esBulkItemResponseData struct {
 	Error  string `json:"error"`
 }
 
-type connections struct {
-	connection1 *os.File
-	connection2 *os.File
-	connection3 *os.File
-}
-
 // ---------------------------------------------------------------------------
 
 func main() {
@@ -129,42 +75,22 @@ func main() {
 	flag.StringVar(&alphakeyURL, "alphakey-url", alphakeyURL, "alphakey service url")
 	flag.Parse()
 
+	w := write.New()
+
 	s, err := mgo.Dial(mongoURL)
 	if err != nil {
 		log.Fatalf("error creating mongoDB session: %s", err)
 	}
-
-	connection1, err := os.OpenFile(filename1, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalf("error opening [%s] file", filename1)
-	}
-
-	connection2, err := os.OpenFile(filename2, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalf("error opening [%s] file", filename2)
-	}
-
-	connection3, err := os.OpenFile(filename3, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalf("error opening [%s] file", filename3)
-	}
-
-	c := &connections{
-		connection1: connection1,
-		connection2: connection2,
-		connection3: connection3,
-	}
-
 	go status()
 
 	it := s.DB(mongoDatabase).C(mongoCollection).Find(bson.M{}).Batch(mongoSize).Iter()
 
 	for {
-		companies := make([]*mongoCompany, mongoSize)
+		companies := make([]*mongo.MongoCompany, mongoSize)
 
 		itx := 0
 		for ; itx < len(companies); itx++ {
-			result := mongoCompany{}
+			result := mongo.MongoCompany{}
 
 			if !it.Next(&result) {
 				break
@@ -177,20 +103,13 @@ func main() {
 		}
 
 		// This will block if we've reached our concurrency limit (sem buffer size)
-		c.sendToES(&companies, itx)
+		sendToES(&companies, itx, w)
 	}
 
 	time.Sleep(5 * time.Second)
 	syncWaitGroup.Wait()
-	if err := connection1.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
-	}
-	if err := connection2.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
-	}
-	if err := connection3.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
-	}
+
+	w.Close()
 
 	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
 }
@@ -201,11 +120,13 @@ func main() {
  pass a reference to the slice of mongoCompany pointers, for efficiency,
  otherwise golang will create a copy of the slice on the stack!
 */
-func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
+func sendToES(companies *[]*mongo.MongoCompany, length int, w *write.Writer) {
 
 	// Wait on semaphore if we've reached our concurrency limit
 	syncWaitGroup.Add(1)
 	semaphore <- 1
+
+	m := &mapping.Mapper{Writer:w}
 
 	go func() {
 		defer func() {
@@ -221,7 +142,7 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 
 		i := 0
 		for i < length {
-			company := c.mapResult((*companies)[i])
+			company := m.MapResult((*companies)[i])
 
 			if company != nil {
 				b, err := json.Marshal(company)
@@ -229,10 +150,10 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 					log.Fatalf("error marshal to json: %s", err)
 				}
 
-				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.id+"\" } }\n")...)
+				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.Id+"\" } }\n")...)
 				bulk = append(bulk, b...)
 				bulk = append(bulk, []byte("\n")...)
-				bunchOfNamesAndNumbers = append(bunchOfNamesAndNumbers, []byte("\n"+company.id+"")...)
+				bunchOfNamesAndNumbers = append(bunchOfNamesAndNumbers, []byte("\n"+company.Id+"")...)
 			} else {
 				skipChannel <- 1
 				target--
@@ -243,7 +164,7 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 
 		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJson, bytes.NewReader(bulk))
 		if err != nil {
-			writeToFile(c.connection1, filename1, string(bunchOfNamesAndNumbers))
+			w.WriteToFile1(string(bunchOfNamesAndNumbers))
 			log.Printf("error posting request %s: data %s", err, string(bulk))
 			return
 		}
@@ -255,7 +176,7 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 		}
 
 		if r.StatusCode > 299 {
-			writeToFile(c.connection2, filename2, string(bunchOfNamesAndNumbers))
+			w.WriteToFile2(string(bunchOfNamesAndNumbers))
 			log.Printf("unexpected put response %s: data %s", r.Status, string(bulk))
 			return
 		}
@@ -279,51 +200,6 @@ func (c *connections) sendToES(companies *[]*mongoCompany, length int) {
 
 // ---------------------------------------------------------------------------
 
-/*
-Pass in a reference to mongoCompany, as golang is pass-by-value. This version, golang
-will create a copy of mongoCompany on the stack for every call (which is good, as it
-ensures immutability, but we want efficiency! Passing a ref to mongoCompany will be
-MUCH quicker.
-*/
-
-func (c *connections) mapResult(source *mongoCompany) *esCompany {
-	if source.Data == nil {
-		log.Printf("Missing company data element")
-		return nil
-	}
-
-	if source.Data.CompanyName == "" {
-		writeToFile(c.connection3, filename3, source.ID)
-		return nil
-	}
-
-	dest := esCompany{
-		id:          source.ID,
-		CompanyType: source.Data.CompanyType,
-		Kind:        recordKind,
-		Links:       &esLinks{fmt.Sprintf("/company/%s", source.ID)},
-	}
-
-	name := source.Data.CompanyName
-
-	f := &format.Format{}
-	nameStart, nameEnding := f.SplitCompanyNameEndings(source.Data.CompanyName)
-
-	items := esItem{
-		CompanyStatus:       source.Data.CompanyStatus,
-		CompanyNumber:       source.Data.CompanyNumber,
-		CorporateName:       name,
-		CorporateNameStart:  nameStart,
-		CorporateNameEnding: nameEnding,
-		RecordType:          "companies",
-	}
-
-	dest.Items = items
-
-	return &dest
-}
-
-// ---------------------------------------------------------------------------
 
 func status() {
 	var (
@@ -357,11 +233,3 @@ func status() {
 	}
 }
 
-// ------------------------------------------------------------------------------
-
-func writeToFile(connection *os.File, location string, sentence string) {
-	_, err := connection.WriteString(sentence + "\n")
-	if err != nil {
-		log.Printf("error writing [%s] to file location: [%s]", sentence, location)
-	}
-}
