@@ -15,6 +15,7 @@ type Mapping interface {
 }
 type Mapper struct {
 	Writer write.Write
+	Format format.Formatter
 }
 
 /*
@@ -43,8 +44,8 @@ func (m *Mapper) MapResult(source *datastructures.MongoCompany) *datastructures.
 
 	name := source.Data.CompanyName
 
-	f := &format.Format{}
-	nameStart, nameEnding := f.SplitCompanyNameEndings(source.Data.CompanyName)
+
+	nameStart, nameEnding := m.Format.SplitCompanyNameEndings(source.Data.CompanyName)
 
 	items := datastructures.EsItem{
 		CompanyStatus:       source.Data.CompanyStatus,
