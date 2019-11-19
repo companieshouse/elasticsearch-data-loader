@@ -22,8 +22,7 @@ fmt:
 
 .PHONY: deps
 deps:
-	go get github.com/mitchellh/gox
-	go get github.com/companieshouse/$(bin)/$(cb)
+	go get ./...
 
 .PHONY: build
 build: deps fmt
@@ -31,8 +30,7 @@ build: deps fmt
 
 .PHONY: test-deps
 test-deps: deps
-	go get github.com/smartystreets/goconvey
-	go get github.com/smartystreets/assertions
+	go get -t ./...
 
 .PHONY: test
 test: test-unit test-integration
