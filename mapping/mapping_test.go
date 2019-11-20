@@ -77,8 +77,7 @@ func TestMapResult(t *testing.T) {
 
 		Convey("When I call mapResult", func() {
 
-			mw.EXPECT().WriteToFile3(mc.ID).String()
-			mf.EXPECT().SplitCompanyNameEndings(md.CompanyName).Return("foo", "bar")
+			mw.EXPECT().WriteToFile3(mc.ID).Times(1)
 			esData := mwf.MapResult(&mc)
 
 			Convey("I expect it to return nil", func() {

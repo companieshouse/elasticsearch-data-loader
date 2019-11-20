@@ -45,7 +45,7 @@ func (m *Map) MapResult(source *datastructures.MongoCompany) *datastructures.EsC
 	}
 
 	dest := datastructures.EsCompany{
-		Id:          source.ID,
+		ID:          source.ID,
 		CompanyType: source.Data.CompanyType,
 		Kind:        recordKind,
 		Links:       &datastructures.EsLinks{Self: fmt.Sprintf("/company/%s", source.ID)},
