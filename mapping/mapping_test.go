@@ -17,15 +17,14 @@ func TestMapResult(t *testing.T) {
 	mf := format.NewMockFormatter(ctrl)
 	mwf := Mapper{Writer: mw, Format: mf}
 
-
 	Convey("Given I have a fully populated mongoCompany", t, func() {
 
 		md := datastructures.MongoData{
-			CompanyName: "EXAMPLE LIMITED",
+			CompanyName:   "EXAMPLE LIMITED",
 			CompanyNumber: "45454",
 			CompanyStatus: "active",
-			CompanyType: "limited",
-			Links: datastructures.MongoLinks{},
+			CompanyType:   "limited",
+			Links:         datastructures.MongoLinks{},
 		}
 
 		mc := datastructures.MongoCompany{
@@ -39,12 +38,11 @@ func TestMapResult(t *testing.T) {
 
 			esData := mwf.MapResult(&mc)
 
-			Convey( "Then I expect a fully populated EsItem", func() {
+			Convey("Then I expect a fully populated EsItem", func() {
 				So(esData, ShouldNotBeNil)
 			})
 		})
 	})
-
 
 	Convey("Given my mongoCompany is not populated", t, func() {
 
@@ -63,13 +61,13 @@ func TestMapResult(t *testing.T) {
 		})
 	})
 
-	Convey("Given the companyName is empty", t, func(){
+	Convey("Given the companyName is empty", t, func() {
 		md := datastructures.MongoData{
-			CompanyName: "",
+			CompanyName:   "",
 			CompanyNumber: "45454",
 			CompanyStatus: "active",
-			CompanyType: "limited",
-			Links: datastructures.MongoLinks{},
+			CompanyType:   "limited",
+			Links:         datastructures.MongoLinks{},
 		}
 
 		mc := datastructures.MongoCompany{
