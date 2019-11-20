@@ -41,7 +41,7 @@ func NewWriter() Writer {
 		log.Fatalf("error opening [%s] file", filename3)
 	}
 
-	return &Write {
+	return &Write{
 		f1: connection1,
 		f2: connection2,
 		f3: connection3,

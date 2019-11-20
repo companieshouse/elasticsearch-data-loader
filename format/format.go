@@ -92,7 +92,7 @@ type Format struct{}
 // NewFormatter returns a concrete implementation of the Formatter interface
 func NewFormatter() Formatter {
 
-	return &Format {}
+	return &Format{}
 }
 
 // SplitCompanyNameEndings splits company name into nameStart and nameEnding in order to remove common name endings

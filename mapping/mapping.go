@@ -15,14 +15,14 @@ type Mapper interface {
 }
 
 type Map struct {
-	writer write.Writer
+	writer    write.Writer
 	formatter format.Formatter
 }
 
 func NewMapper(w write.Writer, f format.Formatter) Mapper {
 
 	return &Map{
-		writer: w,
+		writer:    w,
 		formatter: f,
 	}
 }
