@@ -81,18 +81,21 @@ var companyNameEndings = [...]string{
 	"UNLTD",
 }
 
+// Formatter provides an interface by which to format strings
 type Formatter interface {
 	SplitCompanyNameEndings(name string) (string, string)
 }
 
+// Format implements the Formatter interface
 type Format struct{}
 
+// NewFormatter returns a concrete implementation of the Formatter interface
 func NewFormatter() Formatter {
 
 	return &Format {}
 }
 
-//SplitCompanyNameEndings splits company name into nameStart and nameEnding in order to remove common name endings
+// SplitCompanyNameEndings splits company name into nameStart and nameEnding in order to remove common name endings
 func (f *Format) SplitCompanyNameEndings(name string) (string, string) {
 	var nameStart, nameEnding string
 
