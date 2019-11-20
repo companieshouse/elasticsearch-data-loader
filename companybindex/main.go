@@ -5,6 +5,7 @@ import (
 	"flag"
 	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
 	"github.com/companieshouse/elasticsearch-data-loader/eshttp"
+	"github.com/companieshouse/elasticsearch-data-loader/format"
 	"github.com/companieshouse/elasticsearch-data-loader/mapping"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
 	"log"
@@ -71,7 +72,7 @@ func main() {
 	flag.StringVar(&alphakeyURL, "alphakey-url", alphakeyURL, "alphakey service url")
 	flag.Parse()
 
-	w := write.New()
+	w := write.NewWriter()
 
 	s, err := mgo.Dial(mongoURL)
 	if err != nil {
@@ -116,13 +117,13 @@ func main() {
  pass a reference to the slice of mongoCompany pointers, for efficiency,
  otherwise golang will create a copy of the slice on the stack!
 */
-func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Writer) {
+func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Writer) {
 
 	// Wait on semaphore if we've reached our concurrency limit
 	syncWaitGroup.Add(1)
 	semaphore <- 1
 
-	m := &mapping.Mapper{Writer: w}
+	m := mapping.NewMapper(w, format.NewFormatter())
 
 	go func() {
 		defer func() {

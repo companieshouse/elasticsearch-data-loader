@@ -10,12 +10,21 @@ import (
 
 const recordKind = "searchresults#company"
 
-type Mapping interface {
+type Mapper interface {
 	MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany
 }
-type Mapper struct {
-	Writer write.Write
-	Format format.Formatter
+
+type Map struct {
+	writer write.Writer
+	formatter format.Formatter
+}
+
+func NewMapper(w write.Writer, f format.Formatter) Mapper {
+
+	return &Map{
+		writer: w,
+		formatter: f,
+	}
 }
 
 /*
@@ -24,14 +33,14 @@ will create a copy of mongoCompany on the stack for every call (which is good, a
 ensures immutability, but we want efficiency! Passing a ref to mongoCompany will be
 MUCH quicker.
 */
-func (m *Mapper) MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany {
+func (m *Map) MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany {
 	if source.Data == nil {
 		log.Printf("Missing company data element")
 		return nil
 	}
 
 	if source.Data.CompanyName == "" {
-		m.Writer.WriteToFile3(source.ID)
+		m.writer.WriteToFile3(source.ID)
 		return nil
 	}
 
@@ -44,7 +53,7 @@ func (m *Mapper) MapResult(source *datastructures.MongoCompany) *datastructures.
 
 	name := source.Data.CompanyName
 
-	nameStart, nameEnding := m.Format.SplitCompanyNameEndings(source.Data.CompanyName)
+	nameStart, nameEnding := m.formatter.SplitCompanyNameEndings(source.Data.CompanyName)
 
 	items := datastructures.EsItem{
 		CompanyStatus:       source.Data.CompanyStatus,

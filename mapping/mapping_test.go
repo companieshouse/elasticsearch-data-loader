@@ -15,7 +15,7 @@ func TestMapResult(t *testing.T) {
 
 	mw := write.NewMockWrite(ctrl)
 	mf := format.NewMockFormatter(ctrl)
-	mwf := Mapper{Writer: mw, Format: mf}
+	mwf := Map{writer: mw, formatter: mf}
 
 	Convey("Given I have a fully populated mongoCompany", t, func() {
 

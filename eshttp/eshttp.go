@@ -19,13 +19,13 @@ type Client interface {
 }
 
 type ClientImpl struct {
-	w write.Write
+	writer write.Writer
 }
 
-func NewClient(writer write.Write) Client {
+func NewClient(w write.Writer) Client {
 
 	return &ClientImpl{
-		w: writer,
+		writer: w,
 	}
 }
 
@@ -33,7 +33,7 @@ func (c ClientImpl) SubmitToES(bulk []byte, bunchOfNamesAndNumbers []byte) ([]by
 
 	r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJson, bytes.NewReader(bulk))
 	if err != nil {
-		c.w.WriteToFile1(string(bunchOfNamesAndNumbers))
+		c.writer.WriteToFile1(string(bunchOfNamesAndNumbers))
 		log.Printf("error posting request %s: data %s", err, string(bulk))
 		return nil, err
 	}
@@ -45,7 +45,7 @@ func (c ClientImpl) SubmitToES(bulk []byte, bunchOfNamesAndNumbers []byte) ([]by
 	}
 
 	if r.StatusCode > 299 {
-		c.w.WriteToFile2(string(bunchOfNamesAndNumbers))
+		c.writer.WriteToFile2(string(bunchOfNamesAndNumbers))
 		log.Printf("unexpected put response %s: data %s", r.Status, string(bulk))
 		return nil, err
 	}

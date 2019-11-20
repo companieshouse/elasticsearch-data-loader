@@ -11,20 +11,20 @@ const (
 	filename3 = "company-errors/missing-company-name.txt"
 )
 
-type Write interface {
+type Writer interface {
 	WriteToFile1(sentence string)
 	WriteToFile2(sentence string)
 	WriteToFile3(sentence string)
 	Close()
 }
 
-type Writer struct {
+type Write struct {
 	f1 *os.File
 	f2 *os.File
 	f3 *os.File
 }
 
-func New() *Writer {
+func NewWriter() Writer {
 
 	connection1, err := os.OpenFile(filename1, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
@@ -41,14 +41,14 @@ func New() *Writer {
 		log.Fatalf("error opening [%s] file", filename3)
 	}
 
-	return &Writer{
+	return &Write {
 		f1: connection1,
 		f2: connection2,
 		f3: connection3,
 	}
 }
 
-func (w *Writer) Close() {
+func (w *Write) Close() {
 
 	if err := w.f1.Close(); err != nil {
 		log.Fatalf("error closing file: %s", err)
@@ -61,15 +61,15 @@ func (w *Writer) Close() {
 	}
 }
 
-func (w *Writer) WriteToFile1(sentence string) {
+func (w *Write) WriteToFile1(sentence string) {
 	writeToFile(w.f1, filename1, sentence)
 }
 
-func (w *Writer) WriteToFile2(sentence string) {
+func (w *Write) WriteToFile2(sentence string) {
 	writeToFile(w.f2, filename2, sentence)
 }
 
-func (w *Writer) WriteToFile3(sentence string) {
+func (w *Write) WriteToFile3(sentence string) {
 	writeToFile(w.f3, filename3, sentence)
 }
 
