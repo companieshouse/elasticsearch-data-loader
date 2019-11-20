@@ -11,17 +11,20 @@ import (
 const (
 	esDestIndex     = "companies"
 	esDestURL       = "http://localhost:9200"
-	applicationJson = "application/json"
+	applicationJSON = "application/json"
 )
 
+// Client provides an interface with which to make HTTP calls to Elastic Search
 type Client interface {
 	SubmitToES(bulk []byte, bunchOfNamesAndNumbers []byte) ([]byte, error)
 }
 
+// ClientImpl implements the Client interface
 type ClientImpl struct {
 	writer write.Writer
 }
 
+// NewClient returns a concrete implementation of the Client interface
 func NewClient(w write.Writer) Client {
 
 	return &ClientImpl{
@@ -29,9 +32,10 @@ func NewClient(w write.Writer) Client {
 	}
 }
 
+// SubmitToES submits data to Elastic Search by use of HTTP calls
 func (c ClientImpl) SubmitToES(bulk []byte, bunchOfNamesAndNumbers []byte) ([]byte, error) {
 
-	r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJson, bytes.NewReader(bulk))
+	r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJSON, bytes.NewReader(bulk))
 	if err != nil {
 		c.writer.WriteToFile1(string(bunchOfNamesAndNumbers))
 		log.Printf("error posting request %s: data %s", err, string(bulk))
