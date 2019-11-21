@@ -75,7 +75,6 @@ func TestTransformMongoCompanyToEsCompany(t *testing.T) {
 		Convey("When I call mapResult", func() {
 
 			mw.EXPECT().LogMissingCompanyName(mc.ID).Times(1)
-			mf.EXPECT().SplitCompanyNameEndings(md.CompanyName).Return("foo", "bar")
 			esData := mwf.TransformMongoCompanyToEsCompany(&mc)
 
 			Convey("I expect it to return nil", func() {
