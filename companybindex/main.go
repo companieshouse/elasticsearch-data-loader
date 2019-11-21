@@ -1,24 +1,20 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
 	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
+	"github.com/companieshouse/elasticsearch-data-loader/eshttp"
 	"github.com/companieshouse/elasticsearch-data-loader/format"
 	"github.com/companieshouse/elasticsearch-data-loader/transform"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"sync"
 	"time"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
-const applicationJSON = "application/json"
 
 var (
 	alphakeyURL = "http://chs-alphakey-pp.internal.ch"
@@ -165,22 +161,9 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 			i++
 		}
 
-		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJSON, bytes.NewReader(bulk))
+		c := eshttp.NewClient(w)
+		b, err := c.SubmitDataToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
 		if err != nil {
-			w.LogPostError(string(bunchOfNamesAndNumbers))
-			log.Printf("error posting request %s: data %s", err, string(bulk))
-			return
-		}
-		defer r.Body.Close()
-
-		b, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.Fatalf("error reading response body: %s", err)
-		}
-
-		if r.StatusCode > 299 {
-			w.LogUnexpectedResponse(string(bunchOfNamesAndNumbers))
-			log.Printf("unexpected put response %s: data %s", r.Status, string(bulk))
 			return
 		}
 
