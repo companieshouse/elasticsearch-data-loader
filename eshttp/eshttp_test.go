@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestSubmitDataToES(t *testing.T) {
+func TestSubmitBulkToES(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
@@ -28,9 +28,9 @@ func TestSubmitDataToES(t *testing.T) {
 
 		mr.EXPECT().PostBulkToElasticSearch(bulk, esDestURL, esDestIndex).Return(constructSuccessResponse(), nil)
 
-		Convey("When SubmitDataToES is called", func() {
+		Convey("When SubmitBulkToES is called", func() {
 
-			returnedBytes, err := mc.SubmitDataToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
+			returnedBytes, err := mc.SubmitBulkToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
 
 			Convey("Then returnedBytes should not be nil", func() {
 
@@ -52,9 +52,9 @@ func TestSubmitDataToES(t *testing.T) {
 
 			mw.EXPECT().LogPostError(string(bunchOfNamesAndNumbers)).Times(1)
 
-			Convey("When SubmitDataToES is called", func() {
+			Convey("When SubmitBulkToES is called", func() {
 
-				returnedBytes, err := mc.SubmitDataToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
+				returnedBytes, err := mc.SubmitBulkToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
 
 				Convey("And returnedBytes should be nil", func() {
 
@@ -77,9 +77,9 @@ func TestSubmitDataToES(t *testing.T) {
 
 			mw.EXPECT().LogUnexpectedResponse(string(bunchOfNamesAndNumbers)).Times(1)
 
-			Convey("When SubmitDataToES is called", func() {
+			Convey("When SubmitBulkToES is called", func() {
 
-				returnedBytes, err := mc.SubmitDataToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
+				returnedBytes, err := mc.SubmitBulkToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
 
 				Convey("And returnedBytes should be nil", func() {
 

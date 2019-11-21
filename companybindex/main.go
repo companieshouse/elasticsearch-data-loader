@@ -162,7 +162,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 		}
 
 		c := eshttp.NewClient(w)
-		b, err := c.SubmitDataToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
+		b, err := c.SubmitBulkToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
 		if err != nil {
 			return
 		}

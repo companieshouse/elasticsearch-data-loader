@@ -11,7 +11,7 @@ const applicationJSON = "application/json"
 
 // Client provides an interface with which to communicate with Elastic Search by way of HTTP requests
 type Client interface {
-	SubmitDataToES(bulk []byte, bunchOfNamesAndNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error)
+	SubmitBulkToES(bulk []byte, bunchOfNamesAndNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error)
 }
 
 // ClientImpl provides a concrete implementation of the Client interface
@@ -38,8 +38,8 @@ func NewClientWithRequester(writer write.Writer, requester Requester) Client {
 	}
 }
 
-// SubmitDataToES uses an HTTP post request to submit data to Elastic Search
-func (c *ClientImpl) SubmitDataToES(bulk []byte, bunchOfNamesAndNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error) {
+// SubmitBulkToES uses an HTTP post request to submit data to Elastic Search
+func (c *ClientImpl) SubmitBulkToES(bulk []byte, bunchOfNamesAndNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error) {
 
 	r, err := c.r.PostBulkToElasticSearch(bulk, esDestURL, esDestIndex)
 	if err != nil {
