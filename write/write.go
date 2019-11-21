@@ -11,6 +11,7 @@ const (
 	missingCompanyName = "errors/missing-company-name.txt"
 )
 
+// Writer provides an interface by which to write error messages to log files
 type Writer interface {
 	LogPostError(msg string)
 	LogUnexpectedResponse(msg string)
@@ -18,12 +19,14 @@ type Writer interface {
 	Close()
 }
 
+// Write provides a concrete implementation of the Writer interface
 type Write struct {
 	pe  *os.File
 	ur  *os.File
 	mcn *os.File
 }
 
+// NewWriter returns a concrete implementation of the Writer interface
 func NewWriter() Writer {
 
 	postErrorFile, err := os.OpenFile(postError, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
@@ -48,6 +51,7 @@ func NewWriter() Writer {
 	}
 }
 
+// Close closes a Writer
 func (w *Write) Close() {
 
 	if err := w.pe.Close(); err != nil {
@@ -61,14 +65,17 @@ func (w *Write) Close() {
 	}
 }
 
+// LogPostError logs an error to the 'error-posting-request' file
 func (w *Write) LogPostError(msg string) {
 	writeToFile(w.pe, postError, msg)
 }
 
+// LogUnexpectedResponse logs an error to the 'unexpected-put-response' file
 func (w *Write) LogUnexpectedResponse(msg string) {
 	writeToFile(w.ur, unexpectedResponse, msg)
 }
 
+// LogMissingCompanyName logs an error to the 'missing-company-name' file
 func (w *Write) LogMissingCompanyName(msg string) {
 	writeToFile(w.mcn, missingCompanyName, msg)
 }
