@@ -18,7 +18,7 @@ import (
 	"gopkg.in/mgo.v2/bson"
 )
 
-const applicationJson = "application/json"
+const applicationJSON = "application/json"
 
 var (
 	alphakeyURL = "http://chs-alphakey-pp.internal.ch"
@@ -165,7 +165,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 			i++
 		}
 
-		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJson, bytes.NewReader(bulk))
+		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJSON, bytes.NewReader(bulk))
 		if err != nil {
 			w.LogPostError(string(bunchOfNamesAndNumbers))
 			log.Printf("error posting request %s: data %s", err, string(bulk))
