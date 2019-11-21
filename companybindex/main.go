@@ -153,10 +153,10 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 					log.Fatalf("error marshal to json: %s", err)
 				}
 
-				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.Id+"\" } }\n")...)
+				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.ID+"\" } }\n")...)
 				bulk = append(bulk, b...)
 				bulk = append(bulk, []byte("\n")...)
-				bunchOfNamesAndNumbers = append(bunchOfNamesAndNumbers, []byte("\n"+company.Id+"")...)
+				bunchOfNamesAndNumbers = append(bunchOfNamesAndNumbers, []byte("\n"+company.ID+"")...)
 			} else {
 				skipChannel <- 1
 				target--
