@@ -47,7 +47,13 @@ func (c *ClientImpl) SubmitBulkToES(bulk []byte, companyNumbers []byte, esDestUR
 		log.Printf("error posting request %s: data %s", err, string(bulk))
 		return nil, err
 	}
-	defer r.Body.Close()
+
+	defer func() {
+		err = r.Body.Close()
+		if err != nil {
+			log.Fatalf("failed to close response body after posting bulk to ES: %s", err)
+		}
+	}()
 
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
