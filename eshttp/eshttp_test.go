@@ -112,4 +112,3 @@ func constructUnsuccessfulResponse() *http.Response {
 		Header:     make(http.Header),
 	}
 }
-
