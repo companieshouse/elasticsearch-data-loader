@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func TestMapResult(t *testing.T) {
+func TestTransformMongoCompanyToEsCompany(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
