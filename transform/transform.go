@@ -15,7 +15,7 @@ type Transformer interface {
 }
 
 type Transform struct {
-	Writer write.Write
+	Writer write.Writer
 	Format format.Formatter
 }
 
