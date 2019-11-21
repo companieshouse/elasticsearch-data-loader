@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	postError          = "company-errors/error-posting-request.txt"
-	unexpectedResponse = "company-errors/unexpected-put-response.txt"
-	missingCompanyName = "company-errors/missing-company-name.txt"
+	postError          = "errors/error-posting-request.txt"
+	unexpectedResponse = "errors/unexpected-put-response.txt"
+	missingCompanyName = "errors/missing-company-name.txt"
 )
 
 type Writer interface {
