@@ -10,15 +10,18 @@ import (
 
 const recordKind = "searchresults#company"
 
+// Transformer provides an interface by which to transform data from one form to another
 type Transformer interface {
-	MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany
+	TransformMongoCompanyToEsCompany(source *datastructures.MongoCompany) *datastructures.EsCompany
 }
 
+// Transform provides a concrete implementation of the Transformer interface
 type Transform struct {
 	w write.Writer
 	f format.Formatter
 }
 
+// NewTransformer returns a concrete implementation of the Transformer interface
 func NewTransformer(writer write.Writer, formatter format.Formatter) Transformer {
 
 	return &Transform{
@@ -27,13 +30,8 @@ func NewTransformer(writer write.Writer, formatter format.Formatter) Transformer
 	}
 }
 
-/*
-Pass in a reference to mongoCompany, as golang is pass-by-value. This version, golang
-will create a copy of mongoCompany on the stack for every call (which is good, as it
-ensures immutability, but we want efficiency! Passing a ref to mongoCompany will be
-MUCH quicker.
-*/
-func (t *Transform) MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany {
+// TransformMongoCompanyToEsCompany transforms a MongoCompany into its EsCompany counterpart
+func (t *Transform) TransformMongoCompanyToEsCompany(source *datastructures.MongoCompany) *datastructures.EsCompany {
 	if source.Data == nil {
 		log.Printf("Missing company data element")
 		return nil

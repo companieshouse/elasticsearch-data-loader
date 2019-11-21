@@ -145,7 +145,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 
 		i := 0
 		for i < length {
-			company := t.MapResult((*companies)[i])
+			company := t.TransformMongoCompanyToEsCompany((*companies)[i])
 
 			if company != nil {
 				b, err := json.Marshal(company)

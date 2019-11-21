@@ -36,7 +36,7 @@ func TestMapResult(t *testing.T) {
 
 			mf.EXPECT().SplitCompanyNameEndings(md.CompanyName).Return("foo", "bar")
 
-			esData := mwf.MapResult(&mc)
+			esData := mwf.TransformMongoCompanyToEsCompany(&mc)
 
 			Convey("Then I expect a fully populated EsItem", func() {
 				So(esData, ShouldNotBeNil)
@@ -46,14 +46,11 @@ func TestMapResult(t *testing.T) {
 
 	Convey("Given my mongoCompany is not populated", t, func() {
 
-		md := datastructures.MongoData{}
 		mc := datastructures.MongoCompany{}
 
 		Convey("When I call mapResult", func() {
 
-			mf.EXPECT().SplitCompanyNameEndings(md.CompanyName).Return("foo", "bar")
-
-			esData := mwf.MapResult(&mc)
+			esData := mwf.TransformMongoCompanyToEsCompany(&mc)
 
 			Convey("I expect it to return nil", func() {
 				So(esData, ShouldBeNil)
@@ -79,7 +76,7 @@ func TestMapResult(t *testing.T) {
 
 			mw.EXPECT().LogMissingCompanyName(mc.ID).Times(1)
 			mf.EXPECT().SplitCompanyNameEndings(md.CompanyName).Return("foo", "bar")
-			esData := mwf.MapResult(&mc)
+			esData := mwf.TransformMongoCompanyToEsCompany(&mc)
 
 			Convey("I expect it to return nil", func() {
 
