@@ -75,7 +75,7 @@ func main() {
 	flag.StringVar(&alphakeyURL, "alphakey-url", alphakeyURL, "alphakey service url")
 	flag.Parse()
 
-	w := write.New()
+	w := write.NewWriter()
 
 	s, err := mgo.Dial(mongoURL)
 	if err != nil {
@@ -120,7 +120,7 @@ func main() {
  pass a reference to the slice of mongoCompany pointers, for efficiency,
  otherwise golang will create a copy of the slice on the stack!
 */
-func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Writer) {
+func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Writer) {
 
 	// Wait on semaphore if we've reached our concurrency limit
 	syncWaitGroup.Add(1)
@@ -164,7 +164,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Wr
 
 		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJson, bytes.NewReader(bulk))
 		if err != nil {
-			w.WriteToFile1(string(bunchOfNamesAndNumbers))
+			w.LogPostError(string(bunchOfNamesAndNumbers))
 			log.Printf("error posting request %s: data %s", err, string(bulk))
 			return
 		}
@@ -176,7 +176,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Wr
 		}
 
 		if r.StatusCode > 299 {
-			w.WriteToFile2(string(bunchOfNamesAndNumbers))
+			w.LogUnexpectedResponse(string(bunchOfNamesAndNumbers))
 			log.Printf("unexpected put response %s: data %s", r.Status, string(bulk))
 			return
 		}

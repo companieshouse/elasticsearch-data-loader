@@ -15,7 +15,7 @@ type Transformer interface {
 }
 
 type Transform struct {
-	Writer write.Write
+	Writer write.Writer
 }
 
 /*
@@ -31,7 +31,7 @@ func (t *Transform) MapResult(source *datastructures.MongoCompany) *datastructur
 	}
 
 	if source.Data.CompanyName == "" {
-		t.Writer.WriteToFile3(source.ID)
+		t.Writer.LogMissingCompanyName(source.ID)
 		return nil
 	}
 
