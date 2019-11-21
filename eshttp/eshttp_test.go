@@ -20,7 +20,7 @@ func TestSubmitBulkToES(t *testing.T) {
 	mc := NewClientWithRequester(mw, mr)
 
 	bulk := make([]byte, 1)
-	bunchOfNamesAndNumbers := make([]byte, 1)
+	companyNumbers := make([]byte, 1)
 	esDestURL := "esDestURL"
 	esDestIndex := "esDestIndex"
 
@@ -30,7 +30,7 @@ func TestSubmitBulkToES(t *testing.T) {
 
 		Convey("When SubmitBulkToES is called", func() {
 
-			returnedBytes, err := mc.SubmitBulkToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
+			returnedBytes, err := mc.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 
 			Convey("Then returnedBytes should not be nil", func() {
 
@@ -50,11 +50,11 @@ func TestSubmitBulkToES(t *testing.T) {
 
 		Convey("Then the post error should be logged", func() {
 
-			mw.EXPECT().LogPostError(string(bunchOfNamesAndNumbers)).Times(1)
+			mw.EXPECT().LogPostError(string(companyNumbers)).Times(1)
 
 			Convey("When SubmitBulkToES is called", func() {
 
-				returnedBytes, err := mc.SubmitBulkToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
+				returnedBytes, err := mc.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 
 				Convey("And returnedBytes should be nil", func() {
 
@@ -75,11 +75,11 @@ func TestSubmitBulkToES(t *testing.T) {
 
 		Convey("Then the unexpected response should be logged", func() {
 
-			mw.EXPECT().LogUnexpectedResponse(string(bunchOfNamesAndNumbers)).Times(1)
+			mw.EXPECT().LogUnexpectedResponse(string(companyNumbers)).Times(1)
 
 			Convey("When SubmitBulkToES is called", func() {
 
-				returnedBytes, err := mc.SubmitBulkToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
+				returnedBytes, err := mc.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 
 				Convey("And returnedBytes should be nil", func() {
 

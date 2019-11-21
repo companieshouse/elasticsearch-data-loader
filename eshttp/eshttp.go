@@ -11,7 +11,7 @@ const applicationJSON = "application/json"
 
 // Client provides an interface with which to communicate with Elastic Search by way of HTTP requests
 type Client interface {
-	SubmitBulkToES(bulk []byte, bunchOfNamesAndNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error)
+	SubmitBulkToES(bulk []byte, companyNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error)
 }
 
 // ClientImpl provides a concrete implementation of the Client interface
@@ -39,11 +39,11 @@ func NewClientWithRequester(writer write.Writer, requester Requester) Client {
 }
 
 // SubmitBulkToES uses an HTTP post request to submit data to Elastic Search
-func (c *ClientImpl) SubmitBulkToES(bulk []byte, bunchOfNamesAndNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error) {
+func (c *ClientImpl) SubmitBulkToES(bulk []byte, companyNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error) {
 
 	r, err := c.r.PostBulkToElasticSearch(bulk, esDestURL, esDestIndex)
 	if err != nil {
-		c.w.LogPostError(string(bunchOfNamesAndNumbers))
+		c.w.LogPostError(string(companyNumbers))
 		log.Printf("error posting request %s: data %s", err, string(bulk))
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func (c *ClientImpl) SubmitBulkToES(bulk []byte, bunchOfNamesAndNumbers []byte, 
 	}
 
 	if r.StatusCode > 299 {
-		c.w.LogUnexpectedResponse(string(bunchOfNamesAndNumbers))
+		c.w.LogUnexpectedResponse(string(companyNumbers))
 		log.Printf("unexpected put response %s: data %s", r.Status, string(bulk))
 		return nil, errors.New("invalid response")
 	}

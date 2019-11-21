@@ -137,7 +137,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 		target := length
 
 		var bulk []byte
-		var bunchOfNamesAndNumbers []byte
+		var companyNumbers []byte
 
 		i := 0
 		for i < length {
@@ -152,7 +152,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.ID+"\" } }\n")...)
 				bulk = append(bulk, b...)
 				bulk = append(bulk, []byte("\n")...)
-				bunchOfNamesAndNumbers = append(bunchOfNamesAndNumbers, []byte("\n"+company.ID+"")...)
+				companyNumbers = append(companyNumbers, []byte("\n"+company.ID+"")...)
 			} else {
 				skipChannel <- 1
 				target--
@@ -162,7 +162,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 		}
 
 		c := eshttp.NewClient(w)
-		b, err := c.SubmitBulkToES(bulk, bunchOfNamesAndNumbers, esDestURL, esDestIndex)
+		b, err := c.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 		if err != nil {
 			return
 		}
