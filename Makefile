@@ -3,7 +3,6 @@ TESTS        ?= ./...
 
 bin          := elasticsearch-data-loader
 cb           := companybindex
-test_path    := ./test
 chs_env      := $(CHS_ENV_HOME)/global_env
 source_env   := for chs_env in $(chs_envs); do test -f $$chs_env && . $$chs_env; done
 xunit_output := test.xml
@@ -49,7 +48,7 @@ convey: clean build
 
 .PHONY: clean
 clean:
-	rm -rf ./$(cb)/$(cb) ./$(bin)-*.zip $(test_path)
+	rm -rf ./$(cb)/$(cb) ./$(bin)-*.zip
 
 .PHONY: package
 package: deps
