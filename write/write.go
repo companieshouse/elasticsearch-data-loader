@@ -83,6 +83,6 @@ func (w *Write) LogMissingCompanyName(msg string) {
 func writeToFile(connection *os.File, fileName string, msg string) {
 	_, err := connection.WriteString(msg + "\n")
 	if err != nil {
-		log.Printf("error writing [%s] to file fileName: [%s]", msg, fileName)
+		log.Printf("error writing [%s] to file: [%s]", msg, fileName)
 	}
 }
