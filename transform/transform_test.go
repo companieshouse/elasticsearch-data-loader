@@ -13,9 +13,9 @@ func TestMapResult(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
-	mw := write.NewMockWrite(ctrl)
+	mw := write.NewMockWriter(ctrl)
 	mf := format.NewMockFormatter(ctrl)
-	mwf := Transform{Writer: mw, Format: mf}
+	mwf := NewTransformer(mw, mf)
 
 	Convey("Given I have a fully populated mongoCompany", t, func() {
 
@@ -77,7 +77,7 @@ func TestMapResult(t *testing.T) {
 
 		Convey("When I call mapResult", func() {
 
-			mw.EXPECT().WriteToFile3(mc.ID).String()
+			mw.EXPECT().LogMissingCompanyName(mc.ID).Times(1)
 			mf.EXPECT().SplitCompanyNameEndings(md.CompanyName).Return("foo", "bar")
 			esData := mwf.MapResult(&mc)
 

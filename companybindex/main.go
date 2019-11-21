@@ -129,7 +129,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 	syncWaitGroup.Add(1)
 	semaphore <- 1
 
-	t := &transform.Transform{Writer: w, Format: f}
+	t := transform.NewTransformer(w, f)
 
 	go func() {
 		defer func() {

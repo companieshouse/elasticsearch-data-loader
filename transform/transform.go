@@ -15,8 +15,16 @@ type Transformer interface {
 }
 
 type Transform struct {
-	Writer write.Writer
-	Format format.Formatter
+	w write.Writer
+	f format.Formatter
+}
+
+func NewTransformer(writer write.Writer, formatter format.Formatter) Transformer {
+
+	return &Transform{
+		w: writer,
+		f: formatter,
+	}
 }
 
 /*
@@ -32,7 +40,7 @@ func (t *Transform) MapResult(source *datastructures.MongoCompany) *datastructur
 	}
 
 	if source.Data.CompanyName == "" {
-		t.Writer.LogMissingCompanyName(source.ID)
+		t.w.LogMissingCompanyName(source.ID)
 		return nil
 	}
 
@@ -45,7 +53,7 @@ func (t *Transform) MapResult(source *datastructures.MongoCompany) *datastructur
 
 	name := source.Data.CompanyName
 
-	nameStart, nameEnding := t.Format.SplitCompanyNameEndings(source.Data.CompanyName)
+	nameStart, nameEnding := t.f.SplitCompanyNameEndings(source.Data.CompanyName)
 
 	items := datastructures.EsItem{
 		CompanyStatus:       source.Data.CompanyStatus,
