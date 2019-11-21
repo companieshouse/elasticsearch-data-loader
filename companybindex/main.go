@@ -5,7 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
-	"github.com/companieshouse/elasticsearch-data-loader/mapping"
+	"github.com/companieshouse/elasticsearch-data-loader/transform"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
 	"io/ioutil"
 	"log"
@@ -126,7 +126,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Wr
 	syncWaitGroup.Add(1)
 	semaphore <- 1
 
-	m := &mapping.Mapper{Writer: w}
+	t := &transform.Transform{Writer: w}
 
 	go func() {
 		defer func() {
@@ -142,7 +142,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Wr
 
 		i := 0
 		for i < length {
-			company := m.MapResult((*companies)[i])
+			company := t.MapResult((*companies)[i])
 
 			if company != nil {
 				b, err := json.Marshal(company)

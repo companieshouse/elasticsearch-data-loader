@@ -1,4 +1,4 @@
-package mapping
+package transform
 
 import (
 	"fmt"
@@ -10,10 +10,11 @@ import (
 
 const recordKind = "searchresults#company"
 
-type Mapping interface {
+type Transformer interface {
 	MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany
 }
-type Mapper struct {
+
+type Transform struct {
 	Writer write.Write
 }
 
@@ -23,14 +24,14 @@ will create a copy of mongoCompany on the stack for every call (which is good, a
 ensures immutability, but we want efficiency! Passing a ref to mongoCompany will be
 MUCH quicker.
 */
-func (m *Mapper) MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany {
+func (t *Transform) MapResult(source *datastructures.MongoCompany) *datastructures.EsCompany {
 	if source.Data == nil {
 		log.Printf("Missing company data element")
 		return nil
 	}
 
 	if source.Data.CompanyName == "" {
-		m.Writer.WriteToFile3(source.ID)
+		t.Writer.WriteToFile3(source.ID)
 		return nil
 	}
 
