@@ -81,10 +81,12 @@ var companyNameEndings = [...]string{
 	"UNLTD",
 }
 
+// Formatter provides an interface by which to perform string formatting operations
 type Formatter interface {
 	SplitCompanyNameEndings(name string) (string, string)
 }
 
+// Format provides a concrete implementation of the Formatter interface
 type Format struct{}
 
 // NewFormatter returns a concrete implementation of the Formatter interface
