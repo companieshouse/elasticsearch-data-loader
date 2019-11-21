@@ -15,7 +15,8 @@ type Transformer interface {
 }
 
 type Transform struct {
-	Writer write.Writer
+	Writer write.Write
+	Format format.Formatter
 }
 
 /*
@@ -44,8 +45,7 @@ func (t *Transform) MapResult(source *datastructures.MongoCompany) *datastructur
 
 	name := source.Data.CompanyName
 
-	f := &format.Format{}
-	nameStart, nameEnding := f.SplitCompanyNameEndings(source.Data.CompanyName)
+	nameStart, nameEnding := t.Format.SplitCompanyNameEndings(source.Data.CompanyName)
 
 	items := datastructures.EsItem{
 		CompanyStatus:       source.Data.CompanyStatus,

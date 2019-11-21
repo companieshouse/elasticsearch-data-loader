@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
+	"github.com/companieshouse/elasticsearch-data-loader/format"
 	"github.com/companieshouse/elasticsearch-data-loader/transform"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
 	"io/ioutil"
@@ -76,6 +77,7 @@ func main() {
 	flag.Parse()
 
 	w := write.NewWriter()
+	f := format.Format{}
 
 	s, err := mgo.Dial(mongoURL)
 	if err != nil {
@@ -103,7 +105,7 @@ func main() {
 		}
 
 		// This will block if we've reached our concurrency limit (sem buffer size)
-		sendToES(&companies, itx, w)
+		sendToES(&companies, itx, &w, &f)
 	}
 
 	time.Sleep(5 * time.Second)
@@ -120,13 +122,16 @@ func main() {
  pass a reference to the slice of mongoCompany pointers, for efficiency,
  otherwise golang will create a copy of the slice on the stack!
 */
-func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Writer) {
+
+func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Writer, f *format.Format) {
 
 	// Wait on semaphore if we've reached our concurrency limit
 	syncWaitGroup.Add(1)
 	semaphore <- 1
 
-	t := &transform.Transform{Writer: w}
+	wr := write.Write{}
+
+	t := &transform.Transform{Writer: wr, Format: f}
 
 	go func() {
 		defer func() {
@@ -164,7 +169,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 
 		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJson, bytes.NewReader(bulk))
 		if err != nil {
-			w.LogPostError(string(bunchOfNamesAndNumbers))
+			wr.LogPostError(string(bunchOfNamesAndNumbers))
 			log.Printf("error posting request %s: data %s", err, string(bulk))
 			return
 		}
@@ -176,7 +181,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 		}
 
 		if r.StatusCode > 299 {
-			w.LogUnexpectedResponse(string(bunchOfNamesAndNumbers))
+			wr.LogUnexpectedResponse(string(bunchOfNamesAndNumbers))
 			log.Printf("unexpected put response %s: data %s", r.Status, string(bulk))
 			return
 		}
