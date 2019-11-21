@@ -29,17 +29,17 @@ type Write struct {
 // NewWriter returns a concrete implementation of the Writer interface
 func NewWriter() Writer {
 
-	postErrorFile, err := os.OpenFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	postErrorFile, err := os.OpenFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatalf("error opening [%s] file", postRequestErrors)
 	}
 
-	unexpectedResponseFile, err := os.OpenFile(unexpectedResponse, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	unexpectedResponseFile, err := os.OpenFile(unexpectedResponse, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatalf("error opening [%s] file", unexpectedResponse)
 	}
 
-	missingCompanyNameFile, err := os.OpenFile(missingCompanyName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	missingCompanyNameFile, err := os.OpenFile(missingCompanyName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatalf("error opening [%s] file", missingCompanyName)
 	}
