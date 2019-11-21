@@ -6,9 +6,9 @@ import (
 )
 
 const (
-	postError          = "errors/error-posting-request.txt"
-	unexpectedResponse = "errors/unexpected-put-response.txt"
-	missingCompanyName = "errors/missing-company-name.txt"
+	postRequestErrors  = "errors/postRequestErrors.txt"
+	unexpectedResponse = "errors/unexpectedResponse.txt"
+	missingCompanyName = "errors/missingCompanyName.txt"
 )
 
 // Writer provides an interface by which to write error messages to log files
@@ -29,9 +29,9 @@ type Write struct {
 // NewWriter returns a concrete implementation of the Writer interface
 func NewWriter() Writer {
 
-	postErrorFile, err := os.OpenFile(postError, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	postErrorFile, err := os.OpenFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", postError)
+		log.Fatalf("error opening [%s] file", postRequestErrors)
 	}
 
 	unexpectedResponseFile, err := os.OpenFile(unexpectedResponse, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
@@ -67,7 +67,7 @@ func (w *Write) Close() {
 
 // LogPostError logs an error to the 'error-posting-request' file
 func (w *Write) LogPostError(msg string) {
-	writeToFile(w.pe, postError, msg)
+	writeToFile(w.pe, postRequestErrors, msg)
 }
 
 // LogUnexpectedResponse logs an error to the 'unexpected-put-response' file

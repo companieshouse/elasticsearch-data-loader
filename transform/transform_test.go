@@ -10,10 +10,10 @@ import (
 )
 
 const (
-	companyName = "companyName"
+	companyName   = "companyName"
 	companyNumber = "companyNumber"
 	companyStatus = "companyStatus"
-	companyType = "companyType"
+	companyType   = "companyType"
 
 	id = "id"
 
