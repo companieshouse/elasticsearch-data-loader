@@ -77,7 +77,7 @@ func main() {
 	flag.Parse()
 
 	w := write.NewWriter()
-	f := format.Format{}
+	f := format.NewFormatter()
 
 	s, err := mgo.Dial(mongoURL)
 	if err != nil {
@@ -105,7 +105,7 @@ func main() {
 		}
 
 		// This will block if we've reached our concurrency limit (sem buffer size)
-		sendToES(&companies, itx, w, &f)
+		sendToES(&companies, itx, w, f)
 	}
 
 	time.Sleep(5 * time.Second)
