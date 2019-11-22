@@ -1,7 +1,14 @@
-.idea/
-.DS_Store
-lint.txt
-
+# Build artifacts
 companybindex/companybindex
 
+# Output error files
 errors/
+
+# Lint output
+lint.txt
+
+# GoLand files
+.idea/
+
+# Mac files
+.DS_Store
