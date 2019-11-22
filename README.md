@@ -1,11 +1,11 @@
 # elasticsearch-data-loader
-A tool that Loads data from MongoDB into ElasticSearch
+A tool that Loads data from MongoDB into ElasticSearch.
 
 ## Requirements
 ---------------
 You must download and make the [alpha key service](https://github.com/companieshouse/alpha-key-service). Running the start script locally should start it on port 4025.
 
-In order to run this service you need
+In order to run this service you need:
 
 * alpha-key-service running
 * Mongo DB instance
