@@ -4,7 +4,7 @@ import (
 	"testing"
 )
 
-func TestSplitCompanyNameEndings(t *testing.T) {
+func TestUnitSplitCompanyNameEndings(t *testing.T) {
 
 	f := &Format{}
 

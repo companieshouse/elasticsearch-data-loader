@@ -44,7 +44,6 @@ func (m *Mapper) MapResult(source *datastructures.MongoCompany) *datastructures.
 
 	name := source.Data.CompanyName
 
-
 	nameStart, nameEnding := m.Format.SplitCompanyNameEndings(source.Data.CompanyName)
 
 	items := datastructures.EsItem{

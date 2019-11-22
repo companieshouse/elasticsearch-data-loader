@@ -3,7 +3,6 @@ TESTS        ?= ./...
 
 bin          := elasticsearch-data-loader
 cb           := companybindex
-test_path    := ./test
 chs_env      := $(CHS_ENV_HOME)/global_env
 source_env   := for chs_env in $(chs_envs); do test -f $$chs_env && . $$chs_env; done
 xunit_output := test.xml
@@ -13,63 +12,57 @@ commit       := $(shell git rev-parse --short HEAD)
 tag          := $(shell git tag -l 'v*-rc*' --points-at HEAD)
 version      := $(shell if [[ -n "$(tag)" ]]; then echo $(tag) | sed 's/^v//'; else echo $(commit); fi)
 
+.EXPORT_ALL_VARIABLES:
+GO111MODULE = on
+
 .PHONY: all
-all: build
+all: clean build
 
 .PHONY: fmt
 fmt:
 	go fmt ./...
 
-.PHONY: deps
-deps:
-	go get ./...
-
 .PHONY: build
-build: deps fmt
+build: fmt
 	cd ./$(cb); go build
-
-.PHONY: test-deps
-test-deps: deps
-	go get -t ./...
 
 .PHONY: test
 test: test-unit test-integration
 
 .PHONY: test-unit
-test-unit: test-deps
-	@set -a; go test $(TESTS) -run 'Unit'
+test-unit:
+	go test $(TESTS) -run 'Unit'
 
 .PHONY: test-integration
-test-integration: test-deps
+test-integration:
 	$(source_env); go test $(TESTS) -run 'Integration'
-
-.PHONY: convey
-convey: clean build
-	$(source_env); goconvey
 
 .PHONY: clean
 clean:
-	rm -rf ./$(cb)/$(cb) ./$(bin)-*.zip $(test_path)
+	rm -f $(bin)
+	rm -f *.zip
+	rm -rf build-*
 
-.PHONY: package
-package: deps
-	$(eval tmpdir:=$(shell mktemp -d build-XXXXXXXXXX))
-	cp -r ./$(cb) $(tmpdir)/$(cb)
-	cp ./run-elastic-search.sh $(tmpdir)/run-elastic-search.sh
-	cp -r ./config $(tmpdir)/config
-	zip -r $(bin)-$(version).zip $(tmpdir)
+.PHONY: package	
+package:	
+	$(eval tmpdir:=$(shell mktemp -d build-XXXXXXXXXX))	
+	cp -r ./$(cb) $(tmpdir)/$(cb)	
+	cp ./run-elastic-search.sh $(tmpdir)/run-elastic-search.sh	
+	cp -r ./config $(tmpdir)/config	
+	zip -r $(bin)-$(version).zip $(tmpdir)	
 	rm -rf $(tmpdir)
 
 .PHONY: dist
 dist: clean build package
 
 .PHONY: xunit-tests
-xunit-tests: test-deps
+xunit-tests: GO111MODULE=off
+xunit-tests:
 	go get github.com/tebeka/go2xunit
-	@set -a; go test -v $(TESTS) -run 'Unit' | go2xunit -output $(xunit_output)
+	go test -v $(TESTS) -run 'Unit' | go2xunit -output $(xunit_output)
 
 .PHONY: lint
+lint: GO111MODULE=off
 lint:
-	go get -u github.com/alecthomas/gometalinter
-	gometalinter --install
-	gometalinter ./... --deadline=30s > $(lint_output); true
+	go get github.com/golang/lint/golint
+	golint ./... > $(lint_output)
