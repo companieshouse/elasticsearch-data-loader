@@ -21,7 +21,7 @@ const (
 	nameEnd   = "nameEnd"
 )
 
-func TestTransformMongoCompanyToEsCompany(t *testing.T) {
+func TestUnitTransformMongoCompanyToEsCompany(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 

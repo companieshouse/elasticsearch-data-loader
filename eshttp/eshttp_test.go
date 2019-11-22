@@ -11,7 +11,7 @@ import (
 	"testing"
 )
 
-func TestSubmitBulkToES(t *testing.T) {
+func TestUnitSubmitBulkToES(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
 
