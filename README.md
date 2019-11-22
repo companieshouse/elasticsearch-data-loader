@@ -3,7 +3,6 @@ A tool that Loads data from MongoDB into ElasticSearch
 
 ## Requirements
 ---------------
-
 You must download and make the [alpha key service](https://github.com/companieshouse/alpha-key-service). Running the start script locally should start it on port 4025.
 
 In order to run this service you need
@@ -14,7 +13,6 @@ In order to run this service you need
 
 ## Getting Started
 -------------------
-
 When loading indices for development environments, the number of replica sets must be set as appropriate.
 This can be tweaked in `config/search_scheme.json` but **do not** check in this change.
 
