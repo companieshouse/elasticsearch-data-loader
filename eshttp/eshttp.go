@@ -58,7 +58,7 @@ func (c *ClientImpl) SubmitBulkToES(bulk []byte, companyNumbers []byte, esDestUR
 
 	b, err := ioutil.ReadAll(r.Body)
 	if err != nil {
-		log.Fatalf("error reading response body: %s", err)
+		return nil, err
 	}
 
 	if r.StatusCode > 299 {
