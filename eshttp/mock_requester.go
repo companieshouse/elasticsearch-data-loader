@@ -1,9 +1,10 @@
 package eshttp
 
 import (
-	gomock "github.com/golang/mock/gomock"
 	"net/http"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
 // MockRequester is a mock of Requester interface

@@ -3,12 +3,13 @@ package eshttp
 import (
 	"bytes"
 	"errors"
-	"github.com/companieshouse/elasticsearch-data-loader/write"
-	"github.com/golang/mock/gomock"
-	. "github.com/smartystreets/goconvey/convey"
 	"io/ioutil"
 	"net/http"
 	"testing"
+
+	"github.com/companieshouse/elasticsearch-data-loader/write"
+	"github.com/golang/mock/gomock"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestUnitSubmitBulkToES(t *testing.T) {

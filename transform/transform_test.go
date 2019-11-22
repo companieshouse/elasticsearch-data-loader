@@ -1,12 +1,13 @@
 package transform
 
 import (
+	"testing"
+
 	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
 	"github.com/companieshouse/elasticsearch-data-loader/format"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
 	"github.com/golang/mock/gomock"
 	. "github.com/smartystreets/goconvey/convey"
-	"testing"
 )
 
 const (

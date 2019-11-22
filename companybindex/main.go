@@ -3,14 +3,15 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"log"
+	"sync"
+	"time"
+
 	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
 	"github.com/companieshouse/elasticsearch-data-loader/eshttp"
 	"github.com/companieshouse/elasticsearch-data-loader/format"
 	"github.com/companieshouse/elasticsearch-data-loader/transform"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
-	"log"
-	"sync"
-	"time"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"

@@ -1,8 +1,9 @@
 package format
 
 import (
-	. "github.com/smartystreets/goconvey/convey"
 	"testing"
+
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 func TestUnitSplitCompanyNameEndings(t *testing.T) {

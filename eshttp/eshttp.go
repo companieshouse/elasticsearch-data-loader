@@ -2,9 +2,10 @@ package eshttp
 
 import (
 	"errors"
-	"github.com/companieshouse/elasticsearch-data-loader/write"
 	"io/ioutil"
 	"log"
+
+	"github.com/companieshouse/elasticsearch-data-loader/write"
 )
 
 const applicationJSON = "application/json"

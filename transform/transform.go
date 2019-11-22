@@ -2,10 +2,11 @@ package transform
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
 	"github.com/companieshouse/elasticsearch-data-loader/format"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
-	"log"
 )
 
 const recordKind = "searchresults#company"
