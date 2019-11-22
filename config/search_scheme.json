@@ -1,0 +1,137 @@
+{
+  "settings": {
+    "index": {
+      "number_of_replicas": 3,
+      "number_of_shards": 5,
+      "analysis": {
+        "analyzer": {
+          "analyzer_whitespace_token": {
+            "type": "custom",
+            "tokenizer": "whitespace",
+            "filter": [
+              "lowercase",
+              "filter_ascii_folding"
+            ]
+          },
+           "analyzer_keyword_token_sort": {
+            "type": "custom",
+            "tokenizer": "keyword",
+            "char_filter": [
+              "char_filter_character_mapping",
+              "char_filter_remove_special_characters"
+              ],
+            "filter": [
+              "lowercase", 
+              "filter_ascii_folding", 
+              "trim", 
+              "filter_whitespace_remove"
+            ]
+          },
+          "analyzer_edge_ngram_token": {
+            "type": "custom",
+            "tokenizer": "edge_ngram_tokenizer",
+            "filter": [
+              "lowercase", 
+              "filter_ascii_folding"
+            ]
+          }
+        },
+        "filter": {
+           "filter_ascii_folding": {
+            "type": "asciifolding",
+            "preserve_original": true
+          },
+           "filter_whitespace_remove": {
+            "type": "pattern_replace",
+            "pattern": "\\s+",
+            "replacement":""
+          }
+        },
+        "tokenizer": {
+          "edge_ngram_tokenizer": {
+            "type": "edge_ngram",
+            "min_gram": 2,
+            "max_gram": 20
+          }
+        },
+        "char_filter": {
+          "char_filter_remove_special_characters": {
+            "type": "pattern_replace",
+            "pattern": "[^a-zA-Z0-9]",
+            "replacement": ""
+          },
+          "char_filter_character_mapping": {
+            "type": "mapping",
+            "mappings": [
+            "& => and"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "active_count": {
+        "index": "false",
+        "type": "integer"
+      },
+      "company_type": {
+        "type": "keyword",
+        "index": "false"
+      },
+      "items": {
+        "properties": {
+          "company_number": {
+            "type": "keyword",
+            "index": "false"
+          },
+          "company_status": {
+            "type": "keyword",
+            "index": "false"
+          },
+          "corporate_name": {
+            "type": "keyword",
+            "index": "false"
+          },
+          "corporate_name_start": {
+            "type": "text",
+            "analyzer": "analyzer_whitespace_token",
+            "fields": {
+                "edge_ngram": {
+                  "type": "text",
+                  "analyzer": "analyzer_edge_ngram_token",
+                  "search_analyzer": "analyzer_whitespace_token"
+              },
+                "sort": {
+                  "type": "text",
+                  "analyzer": "analyzer_keyword_token_sort",
+                  "fielddata": true
+              }
+            }
+          },
+          "corporate_name_ending": {
+            "type": "keyword",
+            "index": "false"
+          },
+          "record_type": {
+            "type": "keyword",
+            "index": "false"
+          }
+        }
+      },
+      "kind": {
+        "type": "keyword",
+        "index": "false"
+      },
+      "links": {
+        "properties": {
+          "self": {
+            "type": "keyword",
+            "index": "false"
+          }
+        }
+      }
+    }
+  }
+}
