@@ -1,23 +1,21 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"flag"
-	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
-	"github.com/companieshouse/elasticsearch-data-loader/mapping"
-	"github.com/companieshouse/elasticsearch-data-loader/write"
-	"io/ioutil"
 	"log"
-	"net/http"
 	"sync"
 	"time"
+
+	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
+	"github.com/companieshouse/elasticsearch-data-loader/eshttp"
+	"github.com/companieshouse/elasticsearch-data-loader/format"
+	"github.com/companieshouse/elasticsearch-data-loader/transform"
+	"github.com/companieshouse/elasticsearch-data-loader/write"
 
 	"gopkg.in/mgo.v2"
 	"gopkg.in/mgo.v2/bson"
 )
-
-const applicationJson = "application/json"
 
 var (
 	alphakeyURL = "http://chs-alphakey-pp.internal.ch"
@@ -75,7 +73,8 @@ func main() {
 	flag.StringVar(&alphakeyURL, "alphakey-url", alphakeyURL, "alphakey service url")
 	flag.Parse()
 
-	w := write.New()
+	w := write.NewWriter()
+	f := format.NewFormatter()
 
 	s, err := mgo.Dial(mongoURL)
 	if err != nil {
@@ -103,7 +102,7 @@ func main() {
 		}
 
 		// This will block if we've reached our concurrency limit (sem buffer size)
-		sendToES(&companies, itx, w)
+		sendToES(&companies, itx, w, f)
 	}
 
 	time.Sleep(5 * time.Second)
@@ -120,13 +119,14 @@ func main() {
  pass a reference to the slice of mongoCompany pointers, for efficiency,
  otherwise golang will create a copy of the slice on the stack!
 */
-func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Writer) {
+
+func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Writer, f format.Formatter) {
 
 	// Wait on semaphore if we've reached our concurrency limit
 	syncWaitGroup.Add(1)
 	semaphore <- 1
 
-	m := &mapping.Mapper{Writer: w}
+	t := transform.NewTransformer(w, f)
 
 	go func() {
 		defer func() {
@@ -138,11 +138,11 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Wr
 		target := length
 
 		var bulk []byte
-		var bunchOfNamesAndNumbers []byte
+		var companyNumbers []byte
 
 		i := 0
 		for i < length {
-			company := m.MapResult((*companies)[i])
+			company := t.TransformMongoCompanyToEsCompany((*companies)[i])
 
 			if company != nil {
 				b, err := json.Marshal(company)
@@ -150,10 +150,10 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Wr
 					log.Fatalf("error marshal to json: %s", err)
 				}
 
-				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.Id+"\" } }\n")...)
+				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.ID+"\" } }\n")...)
 				bulk = append(bulk, b...)
 				bulk = append(bulk, []byte("\n")...)
-				bunchOfNamesAndNumbers = append(bunchOfNamesAndNumbers, []byte("\n"+company.Id+"")...)
+				companyNumbers = append(companyNumbers, []byte("\n"+company.ID+"")...)
 			} else {
 				skipChannel <- 1
 				target--
@@ -162,22 +162,9 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w *write.Wr
 			i++
 		}
 
-		r, err := http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJson, bytes.NewReader(bulk))
+		c := eshttp.NewClient(w)
+		b, err := c.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 		if err != nil {
-			w.WriteToFile1(string(bunchOfNamesAndNumbers))
-			log.Printf("error posting request %s: data %s", err, string(bulk))
-			return
-		}
-		defer r.Body.Close()
-
-		b, err := ioutil.ReadAll(r.Body)
-		if err != nil {
-			log.Fatalf("error reading response body: %s", err)
-		}
-
-		if r.StatusCode > 299 {
-			w.WriteToFile2(string(bunchOfNamesAndNumbers))
-			log.Printf("unexpected put response %s: data %s", r.Status, string(bulk))
 			return
 		}
 

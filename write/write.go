@@ -6,76 +6,83 @@ import (
 )
 
 const (
-	filename1 = "company-errors/error-posting-request.txt"
-	filename2 = "company-errors/unexpected-put-response.txt"
-	filename3 = "company-errors/missing-company-name.txt"
+	postRequestErrors  = "errors/postRequestErrors.txt"
+	unexpectedResponse = "errors/unexpectedResponse.txt"
+	missingCompanyName = "errors/missingCompanyName.txt"
 )
 
-type Write interface {
-	WriteToFile1(sentence string)
-	WriteToFile2(sentence string)
-	WriteToFile3(sentence string)
+// Writer provides an interface by which to write error messages to log files
+type Writer interface {
+	LogPostError(msg string)
+	LogUnexpectedResponse(msg string)
+	LogMissingCompanyName(msg string)
 	Close()
 }
 
-type Writer struct {
-	f1 *os.File
-	f2 *os.File
-	f3 *os.File
+// Write provides a concrete implementation of the Writer interface
+type Write struct {
+	pe  *os.File
+	ur  *os.File
+	mcn *os.File
 }
 
-func New() *Writer {
+// NewWriter returns a concrete implementation of the Writer interface
+func NewWriter() Writer {
 
-	connection1, err := os.OpenFile(filename1, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	postErrorFile, err := os.OpenFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", filename1)
+		log.Fatalf("error opening [%s] file", postRequestErrors)
 	}
 
-	connection2, err := os.OpenFile(filename2, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	unexpectedResponseFile, err := os.OpenFile(unexpectedResponse, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", filename2)
+		log.Fatalf("error opening [%s] file", unexpectedResponse)
 	}
 
-	connection3, err := os.OpenFile(filename3, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0666)
+	missingCompanyNameFile, err := os.OpenFile(missingCompanyName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", filename3)
+		log.Fatalf("error opening [%s] file", missingCompanyName)
 	}
 
-	return &Writer{
-		f1: connection1,
-		f2: connection2,
-		f3: connection3,
+	return &Write{
+		pe:  postErrorFile,
+		ur:  unexpectedResponseFile,
+		mcn: missingCompanyNameFile,
 	}
 }
 
-func (w *Writer) Close() {
+// Close closes a Writer
+func (w *Write) Close() {
 
-	if err := w.f1.Close(); err != nil {
+	if err := w.pe.Close(); err != nil {
 		log.Fatalf("error closing file: %s", err)
 	}
-	if err := w.f2.Close(); err != nil {
+	if err := w.ur.Close(); err != nil {
 		log.Fatalf("error closing file: %s", err)
 	}
-	if err := w.f3.Close(); err != nil {
+	if err := w.mcn.Close(); err != nil {
 		log.Fatalf("error closing file: %s", err)
 	}
 }
 
-func (w *Writer) WriteToFile1(sentence string) {
-	writeToFile(w.f1, filename1, sentence)
+// LogPostError logs an error to the 'error-posting-request' file
+func (w *Write) LogPostError(msg string) {
+	writeToFile(w.pe, postRequestErrors, msg)
 }
 
-func (w *Writer) WriteToFile2(sentence string) {
-	writeToFile(w.f2, filename2, sentence)
+// LogUnexpectedResponse logs an error to the 'unexpected-put-response' file
+func (w *Write) LogUnexpectedResponse(msg string) {
+	writeToFile(w.ur, unexpectedResponse, msg)
 }
 
-func (w *Writer) WriteToFile3(sentence string) {
-	writeToFile(w.f3, filename3, sentence)
+// LogMissingCompanyName logs an error to the 'missing-company-name' file
+func (w *Write) LogMissingCompanyName(msg string) {
+	writeToFile(w.mcn, missingCompanyName, msg)
 }
 
-func writeToFile(connection *os.File, location string, sentence string) {
-	_, err := connection.WriteString(sentence + "\n")
+func writeToFile(connection *os.File, fileName string, msg string) {
+	_, err := connection.WriteString(msg + "\n")
 	if err != nil {
-		log.Printf("error writing [%s] to file location: [%s]", sentence, location)
+		log.Printf("error writing [%s] to file: [%s]", msg, fileName)
 	}
 }

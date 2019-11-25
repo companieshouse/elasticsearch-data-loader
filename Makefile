@@ -43,13 +43,13 @@ clean:
 	rm -f *.zip
 	rm -rf build-*
 
-.PHONY: package	
-package:	
-	$(eval tmpdir:=$(shell mktemp -d build-XXXXXXXXXX))	
-	cp -r ./$(cb) $(tmpdir)/$(cb)	
-	cp ./run-elastic-search.sh $(tmpdir)/run-elastic-search.sh	
-	cp -r ./config $(tmpdir)/config	
-	zip -r $(bin)-$(version).zip $(tmpdir)	
+.PHONY: package
+package:
+	$(eval tmpdir:=$(shell mktemp -d build-XXXXXXXXXX))
+	cp -r ./$(cb) $(tmpdir)/$(cb)
+	cp ./run-elastic-search.sh $(tmpdir)/run-elastic-search.sh
+	cp -r ./config $(tmpdir)/config
+	zip -r $(bin)-$(version).zip $(tmpdir)
 	rm -rf $(tmpdir)
 
 .PHONY: dist
