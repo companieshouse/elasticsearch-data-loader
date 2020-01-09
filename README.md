@@ -20,7 +20,7 @@ When the alpha key service is running then run the following command to drop the
 
 ## Examples 
 ```bash
-./run-elastic-search -s company -e enva.es.ch.gov.uk:9400 -i alpha_search -m chs-pp-mes-sl2.ch.gov.uk:27019 -u admin -p admin -a http://chs-alphakey-pp.internal.ch -c false
+./run-elastic-search -s company -e http://enva.es.ch.gov.uk:9400 -i alpha_search -m chs-pp-mes-sl2.ch.gov.uk:27019 -u admin -p admin -a http://chs-alphakey-pp.internal.ch -c false
 ```
 
 * Anything to be executed should be executed from the project root — ie this directory.

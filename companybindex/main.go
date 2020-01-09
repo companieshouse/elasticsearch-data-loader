@@ -170,7 +170,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 
 		var bulkRes esBulkResponse
 		if err := json.Unmarshal(b, &bulkRes); err != nil {
-			log.Fatalf("error unmarshaling json: %s", err)
+			log.Fatalf("error unmarshaling json: [%s] actual response: [%s]", err, b)
 		}
 
 		if bulkRes.Errors {
