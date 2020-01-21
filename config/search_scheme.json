@@ -5,14 +5,6 @@
       "number_of_shards": 5,
       "analysis": {
         "analyzer": {
-          "analyzer_whitespace_token": {
-            "type": "custom",
-            "tokenizer": "whitespace",
-            "filter": [
-              "lowercase",
-              "filter_ascii_folding"
-            ]
-          },
            "analyzer_keyword_token_sort": {
             "type": "custom",
             "tokenizer": "keyword",
