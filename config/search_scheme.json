@@ -1,7 +1,7 @@
 {
   "settings": {
     "index": {
-      "number_of_replicas": 0,
+      "number_of_replicas": 1,
       "number_of_shards": 1,
       "analysis": {
         "analyzer": {
@@ -91,8 +91,8 @@
             "index": "false"
           },
           "corporate_name": {
-            "type": "keyword",
-            "index": "false"
+            "type": "text",
+            "index": "true"
           },
           "corporate_name_start": {
             "type": "text",
