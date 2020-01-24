@@ -4,6 +4,10 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
+	"fmt"
+	"net/http"
+	"io/ioutil"
+	"bytes"
 	"sync"
 	"time"
 
@@ -58,6 +62,15 @@ type esBulkItemResponseData struct {
 	ID     string `json:"_id"`
 	Status int    `json:"status"`
 	Error  string `json:"error"`
+}
+
+type companyName struct {
+	Name string `json:"name"`
+}
+
+type alphaKeys struct {
+	SameAsKey string `json:"sameAsAlphaKey"`
+	SortKey   string `json:"orderedAlphaKey"`
 }
 
 // ---------------------------------------------------------------------------
@@ -140,8 +153,17 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 		var bulk []byte
 		var companyNumbers []byte
 
+		companyNames := getCompanyNames(companies, length)
+		keys := corporateAlphaKeys(companyNames, length)
+
+		var j []alphaKeys
+		if err := json.Unmarshal(keys, &j); err != nil {
+			log.Printf("error unmarshalling alphakey response for %s", keys)
+		}
+
 		i := 0
 		for i < length {
+			sameAsKey, sortKey := j[i].SameAsKey, j[i].SortKey
 			company := t.TransformMongoCompanyToEsCompany((*companies)[i])
 
 			if company != nil {
@@ -218,3 +240,62 @@ func status() {
 		}
 	}
 }
+
+// ------------------------------------------------------------------------------
+
+func getCompanyNames(companies *[]*datastructures.MongoCompany, length int) []string {
+	var companyNameList []string
+	for i := 0; i < length; i++ {
+		companyName := (*companies)[i].Data.CompanyName
+		companyNameList = append(companyNameList, companyName)
+	}
+
+	return companyNameList
+}
+
+// ------------------------------------------------------------------------------
+
+func corporateAlphaKeys(corporateNames []string, length int) []byte {
+	items := []companyName{}
+	for i := 0; i < length; i++ {
+		name := corporateNames[i]
+		var newItem companyName
+		if name != "" {
+			newItem = companyName{Name: name}
+		} else {
+			newItem = companyName{Name: "no-name-test"}
+		}
+		items = append(items, newItem)
+	}
+
+	jsonStr, err := json.Marshal(items)
+	if err != nil {
+		log.Fatalf("error marshalling %s: %s", items, err)
+	}
+
+	uri := fmt.Sprintf("%s/alphakey-bulk", alphakeyURL)
+
+	request, err := http.NewRequest("POST", uri, bytes.NewBuffer(jsonStr))
+	if err != nil {
+		log.Fatalf(`error: %s with items: \n %s`, items, err)
+	}
+
+	request.Header.Set("Accept", "application/json")
+	request.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	resp, err := client.Do(request)
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatalf("error reading alphakey response body for %s: %s", items, err)
+	}
+
+	return body
+}
+
+// ------------------------------------------------------------------------------
