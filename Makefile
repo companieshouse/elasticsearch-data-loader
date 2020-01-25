@@ -66,3 +66,9 @@ lint: GO111MODULE=off
 lint:
 	go get github.com/golang/lint/golint
 	golint ./... > $(lint_output)
+
+.PHONY: convey
+convey: GO111MODULE=off
+convey:
+	go get github.com/smartystreets/goconvey
+	goconvey

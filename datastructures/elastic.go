@@ -17,6 +17,8 @@ type EsItem struct {
 	CorporateNameStart  string `json:"corporate_name_start"`
 	CorporateNameEnding string `json:"corporate_name_ending,omitempty"`
 	RecordType          string `json:"record_type"`
+	AlphaKey            string `json:"alpha_key"`
+	OrderedAlphaKey     string `json:"ordered_alpha_key"`
 }
 
 // EsLinks holds a set of links relevant to an EsCompany

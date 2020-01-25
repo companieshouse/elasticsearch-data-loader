@@ -76,3 +76,15 @@ func (mr *MockWriterMockRecorder) LogMissingCompanyName(arg0 interface{}) *gomoc
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogMissingCompanyName", reflect.TypeOf((*MockWriter)(nil).LogMissingCompanyName), arg0)
 }
+
+// LogAlphaKeyErrors mocks base method
+func (m *MockWriter) LogAlphaKeyErrors(arg0 string) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "LogAlphaKeyErrors", arg0)
+}
+
+// LogAlphaKeyErrors indicates an expected call of LogAlphaKeyErrors
+func (mr *MockWriterMockRecorder) LogAlphaKeyErrors(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "LogAlphaKeyErrors", reflect.TypeOf((*MockWriter)(nil).LogAlphaKeyErrors), arg0)
+}

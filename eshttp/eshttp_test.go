@@ -24,10 +24,11 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 	companyNumbers := make([]byte, 1)
 	esDestURL := "esDestURL"
 	esDestIndex := "esDestIndex"
+	uri := esDestURL + "/" + esDestIndex + "/_bulk"
 
 	Convey("Given a successful post of bulks to Elastic Search", t, func() {
 
-		mr.EXPECT().PostBulkToElasticSearch(bulk, esDestURL, esDestIndex).Return(constructSuccessResponse(), nil)
+		mr.EXPECT().Post(bulk, uri).Return(constructSuccessResponse(), nil)
 
 		Convey("When SubmitBulkToES is called", func() {
 
@@ -47,7 +48,7 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 
 	Convey("Given an unsuccessful post of bulks to Elastic Search", t, func() {
 
-		mr.EXPECT().PostBulkToElasticSearch(bulk, esDestURL, esDestIndex).Return(constructUnsuccessfulResponse(), errors.New("error posting bulk"))
+		mr.EXPECT().Post(bulk, uri).Return(constructUnsuccessfulResponse(), errors.New("error posting bulk"))
 
 		Convey("Then the post error should be logged", func() {
 
@@ -72,7 +73,7 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 
 	Convey("Given an unexpected response when posting bulks to Elastic Search", t, func() {
 
-		mr.EXPECT().PostBulkToElasticSearch(bulk, esDestURL, esDestIndex).Return(constructUnsuccessfulResponse(), nil)
+		mr.EXPECT().Post(bulk, uri).Return(constructUnsuccessfulResponse(), nil)
 
 		Convey("Then the unexpected response should be logged", func() {
 
@@ -81,6 +82,64 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 			Convey("When SubmitBulkToES is called", func() {
 
 				returnedBytes, err := mc.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
+
+				Convey("And returnedBytes should be nil", func() {
+
+					So(returnedBytes, ShouldBeNil)
+
+					Convey("And err should not be nil", func() {
+
+						So(err, ShouldNotBeNil)
+					})
+				})
+			})
+		})
+	})
+}
+
+func TestUnitGetAlphaKeys(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+
+	mw := write.NewMockWriter(ctrl)
+	mr := NewMockRequester(ctrl)
+	mc := NewClientWithRequester(mw, mr)
+
+	companyNames := make([]byte, 1)
+	alphaKeyURL := "alphaKeyURL"
+	uri := alphaKeyURL + "/alphakey-bulk"
+
+	Convey("Given a successful post of company names to the alpha key service", t, func() {
+
+		mr.EXPECT().Post(companyNames, uri).Return(constructSuccessResponse(), nil)
+
+		Convey("When GetAlphaKeys is called", func() {
+
+			returnedBytes, err := mc.GetAlphaKeys(companyNames, alphaKeyURL)
+
+			Convey("Then returnedBytes should not be nil", func() {
+
+				So(returnedBytes, ShouldNotBeNil)
+
+				Convey("And err should be nil", func() {
+
+					So(err, ShouldBeNil)
+				})
+			})
+		})
+	})
+
+	Convey("Given an unsuccessful post of company names to the alpha key service", t, func() {
+
+		mr.EXPECT().Post(companyNames, uri).Return(constructUnsuccessfulResponse(), errors.New("error posting company names to the alpha key service"))
+
+		Convey("Then the alpha ker error should be logged", func() {
+
+			mw.EXPECT().LogAlphaKeyErrors(string(companyNames)).Times(1)
+
+			Convey("When GetAlphaKeys is called", func() {
+
+				returnedBytes, err := mc.GetAlphaKeys(companyNames, alphaKeyURL)
 
 				Convey("And returnedBytes should be nil", func() {
 

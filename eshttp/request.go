@@ -7,7 +7,7 @@ import (
 
 // Requester provides an interface by which to execute HTTP requests
 type Requester interface {
-	PostBulkToElasticSearch(bulk []byte, esDestURL string, esDestIndex string) (*http.Response, error)
+	Post(body []byte, uri string) (*http.Response, error)
 }
 
 // Request provides a concrete implementation of the Requester interface
@@ -19,8 +19,8 @@ func NewRequester() Requester {
 	return &Request{}
 }
 
-// PostBulkToElasticSearch posts a 'bulk' to Elastic Search
-func (req *Request) PostBulkToElasticSearch(bulk []byte, esDestURL string, esDestIndex string) (*http.Response, error) {
+// Post performs a POST request, using a provided body, against a given uri
+func (req *Request) Post(body []byte, uri string) (*http.Response, error) {
 
-	return http.Post(esDestURL+"/"+esDestIndex+"/_bulk", applicationJSON, bytes.NewReader(bulk))
+	return http.Post(uri, applicationJSON, bytes.NewReader(body))
 }

@@ -30,17 +30,17 @@ func (m *MockRequester) EXPECT() *MockRequesterMockRecorder {
 	return m.recorder
 }
 
-// PostBulkToElasticSearch mocks base method
-func (m *MockRequester) PostBulkToElasticSearch(arg0 []byte, arg1 string, arg2 string) (*http.Response, error) {
+// Post mocks base method
+func (m *MockRequester) Post(arg0 []byte, arg1 string) (*http.Response, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "PostBulkToElasticSearch", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "Post", arg0, arg1)
 	ret0, _ := ret[0].(*http.Response)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// PostBulkToElasticSearch indicates an expected call of PostBulkToElasticSearch
-func (mr *MockRequesterMockRecorder) PostBulkToElasticSearch(arg0 interface{}, arg1 interface{}, arg2 interface{}) *gomock.Call {
+// Post indicates an expected call of Post
+func (mr *MockRequesterMockRecorder) Post(arg0 interface{}, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "PostBulkToElasticSearch", reflect.TypeOf((*MockRequester)(nil).PostBulkToElasticSearch), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Post", reflect.TypeOf((*MockRequester)(nil).Post), arg0, arg1)
 }

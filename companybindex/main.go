@@ -4,10 +4,6 @@ import (
 	"encoding/json"
 	"flag"
 	"log"
-	"fmt"
-	"net/http"
-	"io/ioutil"
-	"bytes"
 	"sync"
 	"time"
 
@@ -64,15 +60,6 @@ type esBulkItemResponseData struct {
 	Error  string `json:"error"`
 }
 
-type companyName struct {
-	Name string `json:"name"`
-}
-
-type alphaKeys struct {
-	SameAsKey string `json:"sameAsAlphaKey"`
-	SortKey   string `json:"orderedAlphaKey"`
-}
-
 // ---------------------------------------------------------------------------
 
 func main() {
@@ -94,6 +81,7 @@ func main() {
 		log.Fatalf("error creating mongoDB session: %s", err)
 	}
 	go status()
+	defer s.Close()
 
 	it := s.DB(mongoDatabase).C(mongoCollection).Find(bson.M{}).Batch(mongoSize).Iter()
 
@@ -140,6 +128,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 	semaphore <- 1
 
 	t := transform.NewTransformer(w, f)
+	c := eshttp.NewClient(w)
 
 	go func() {
 		defer func() {
@@ -153,18 +142,25 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 		var bulk []byte
 		var companyNumbers []byte
 
-		companyNames := getCompanyNames(companies, length)
-		keys := corporateAlphaKeys(companyNames, length)
+		companyNames := t.GetCompanyNames(companies, length)
+		compNamesBody, err := json.Marshal(companyNames)
+		if err != nil {
+			log.Fatalf("error marshal to json: %s", err)
+		}
 
-		var j []alphaKeys
-		if err := json.Unmarshal(keys, &j); err != nil {
-			log.Printf("error unmarshalling alphakey response for %s", keys)
+		keys, err := c.GetAlphaKeys(compNamesBody, alphakeyURL)
+		if err != nil {
+			log.Fatalf("error fetching alpha keys: %s", err)
+		}
+
+		var alphaKeys []datastructures.AlphaKey
+		if err := json.Unmarshal(keys, &alphaKeys); err != nil {
+			log.Fatalf("error unmarshalling alphakey response for %s", compNamesBody)
 		}
 
 		i := 0
 		for i < length {
-			sameAsKey, sortKey := j[i].SameAsKey, j[i].SortKey
-			company := t.TransformMongoCompanyToEsCompany((*companies)[i])
+			company := t.TransformMongoCompanyToEsCompany((*companies)[i], &alphaKeys[i])
 
 			if company != nil {
 				b, err := json.Marshal(company)
@@ -184,7 +180,6 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 			i++
 		}
 
-		c := eshttp.NewClient(w)
 		b, err := c.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 		if err != nil {
 			return
@@ -239,63 +234,6 @@ func status() {
 			skipCounter = 0
 		}
 	}
-}
-
-// ------------------------------------------------------------------------------
-
-func getCompanyNames(companies *[]*datastructures.MongoCompany, length int) []string {
-	var companyNameList []string
-	for i := 0; i < length; i++ {
-		companyName := (*companies)[i].Data.CompanyName
-		companyNameList = append(companyNameList, companyName)
-	}
-
-	return companyNameList
-}
-
-// ------------------------------------------------------------------------------
-
-func corporateAlphaKeys(corporateNames []string, length int) []byte {
-	items := []companyName{}
-	for i := 0; i < length; i++ {
-		name := corporateNames[i]
-		var newItem companyName
-		if name != "" {
-			newItem = companyName{Name: name}
-		} else {
-			newItem = companyName{Name: "no-name-test"}
-		}
-		items = append(items, newItem)
-	}
-
-	jsonStr, err := json.Marshal(items)
-	if err != nil {
-		log.Fatalf("error marshalling %s: %s", items, err)
-	}
-
-	uri := fmt.Sprintf("%s/alphakey-bulk", alphakeyURL)
-
-	request, err := http.NewRequest("POST", uri, bytes.NewBuffer(jsonStr))
-	if err != nil {
-		log.Fatalf(`error: %s with items: \n %s`, items, err)
-	}
-
-	request.Header.Set("Accept", "application/json")
-	request.Header.Set("Content-Type", "application/json")
-
-	client := &http.Client{}
-	resp, err := client.Do(request)
-	if err != nil {
-		panic(err)
-	}
-	defer resp.Body.Close()
-
-	body, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("error reading alphakey response body for %s: %s", items, err)
-	}
-
-	return body
 }
 
 // ------------------------------------------------------------------------------
