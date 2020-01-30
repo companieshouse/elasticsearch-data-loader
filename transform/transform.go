@@ -13,7 +13,8 @@ const recordKind = "searchresults#company"
 
 // Transformer provides an interface by which to transform data from one form to another
 type Transformer interface {
-	TransformMongoCompanyToEsCompany(source *datastructures.MongoCompany) *datastructures.EsCompany
+	TransformMongoCompanyToEsCompany(mongoCompany *datastructures.MongoCompany, alphaKey *datastructures.AlphaKey) *datastructures.EsCompany
+	GetCompanyNames(companies *[]*datastructures.MongoCompany, length int) []datastructures.CompanyName
 }
 
 // Transform provides a concrete implementation of the Transformer interface
@@ -31,39 +32,52 @@ func NewTransformer(writer write.Writer, formatter format.Formatter) Transformer
 	}
 }
 
-// TransformMongoCompanyToEsCompany transforms a MongoCompany into its EsCompany counterpart
-func (t *Transform) TransformMongoCompanyToEsCompany(source *datastructures.MongoCompany) *datastructures.EsCompany {
-	if source.Data == nil {
+// TransformMongoCompanyToEsCompany transforms a MongoCompany and its relevant AlphaKey into its EsCompany counterpart
+func (t *Transform) TransformMongoCompanyToEsCompany(mongoCompany *datastructures.MongoCompany, alphaKey *datastructures.AlphaKey) *datastructures.EsCompany {
+	if mongoCompany.Data == nil {
 		log.Printf("Missing company data element")
 		return nil
 	}
 
-	if source.Data.CompanyName == "" {
-		t.w.LogMissingCompanyName(source.ID)
+	if mongoCompany.Data.CompanyName == "" {
+		t.w.LogMissingCompanyName(mongoCompany.ID)
 		return nil
 	}
 
 	dest := datastructures.EsCompany{
-		ID:          source.ID,
-		CompanyType: source.Data.CompanyType,
+		ID:          mongoCompany.ID,
+		CompanyType: mongoCompany.Data.CompanyType,
 		Kind:        recordKind,
-		Links:       &datastructures.EsLinks{Self: fmt.Sprintf("/company/%s", source.ID)},
+		Links:       &datastructures.EsLinks{Self: fmt.Sprintf("/company/%s", mongoCompany.ID)},
 	}
 
-	name := source.Data.CompanyName
+	name := mongoCompany.Data.CompanyName
 
-	nameStart, nameEnding := t.f.SplitCompanyNameEndings(source.Data.CompanyName)
+	nameStart, nameEnding := t.f.SplitCompanyNameEndings(mongoCompany.Data.CompanyName)
 
 	items := datastructures.EsItem{
-		CompanyStatus:       source.Data.CompanyStatus,
-		CompanyNumber:       source.Data.CompanyNumber,
+		CompanyStatus:       mongoCompany.Data.CompanyStatus,
+		CompanyNumber:       mongoCompany.Data.CompanyNumber,
 		CorporateName:       name,
 		CorporateNameStart:  nameStart,
 		CorporateNameEnding: nameEnding,
 		RecordType:          "companies",
+		AlphaKey:            alphaKey.SameAsAlphaKey,
+		OrderedAlphaKey:     alphaKey.OrderedAlphaKey,
 	}
 
 	dest.Items = items
 
 	return &dest
+}
+
+// GetCompanyNames returns a set of 'CompanyName's for a given set of 'MongoCompany's
+func (t *Transform) GetCompanyNames(companies *[]*datastructures.MongoCompany, length int) []datastructures.CompanyName {
+
+	var companyNames []datastructures.CompanyName
+	for i := 0; i < length; i++ {
+		companyNames = append(companyNames, datastructures.CompanyName{Name: (*companies)[i].Data.CompanyName})
+	}
+
+	return companyNames
 }

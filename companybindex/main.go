@@ -81,6 +81,7 @@ func main() {
 		log.Fatalf("error creating mongoDB session: %s", err)
 	}
 	go status()
+	defer s.Close()
 
 	it := s.DB(mongoDatabase).C(mongoCollection).Find(bson.M{}).Batch(mongoSize).Iter()
 
@@ -127,6 +128,7 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 	semaphore <- 1
 
 	t := transform.NewTransformer(w, f)
+	c := eshttp.NewClient(w)
 
 	go func() {
 		defer func() {
@@ -140,9 +142,25 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 		var bulk []byte
 		var companyNumbers []byte
 
+		companyNames := t.GetCompanyNames(companies, length)
+		compNamesBody, err := json.Marshal(companyNames)
+		if err != nil {
+			log.Fatalf("error marshal to json: %s", err)
+		}
+
+		keys, err := c.GetAlphaKeys(compNamesBody, alphakeyURL)
+		if err != nil {
+			log.Fatalf("error fetching alpha keys: %s", err)
+		}
+
+		var alphaKeys []datastructures.AlphaKey
+		if err := json.Unmarshal(keys, &alphaKeys); err != nil {
+			log.Fatalf("error unmarshalling alphakey response for %s", compNamesBody)
+		}
+
 		i := 0
 		for i < length {
-			company := t.TransformMongoCompanyToEsCompany((*companies)[i])
+			company := t.TransformMongoCompanyToEsCompany((*companies)[i], &alphaKeys[i])
 
 			if company != nil {
 				b, err := json.Marshal(company)
@@ -162,7 +180,6 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 			i++
 		}
 
-		c := eshttp.NewClient(w)
 		b, err := c.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 		if err != nil {
 			return
@@ -218,3 +235,5 @@ func status() {
 		}
 	}
 }
+
+// ------------------------------------------------------------------------------

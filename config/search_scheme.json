@@ -5,13 +5,13 @@
       "number_of_shards": 5,
       "analysis": {
         "analyzer": {
-          "analyzer_whitespace_token": {	
-            "type": "custom",	
-            "tokenizer": "whitespace",	
-            "filter": [	
-              "lowercase",	
-              "filter_ascii_folding"	
-            ]	
+          "analyzer_whitespace_token": {
+            "type": "custom",
+            "tokenizer": "whitespace",
+            "filter": [
+              "lowercase",
+              "filter_ascii_folding"
+            ]
           },
           "analyzer_keyword_token_sort": {
             "type": "custom",
@@ -21,9 +21,9 @@
               "char_filter_remove_special_characters"
               ],
             "filter": [
-              "lowercase", 
-              "filter_ascii_folding", 
-              "trim", 
+              "lowercase",
+              "filter_ascii_folding",
+              "trim",
               "filter_whitespace_remove"
             ]
           },
@@ -31,7 +31,7 @@
             "type": "custom",
             "tokenizer": "edge_ngram_tokenizer",
             "filter": [
-              "lowercase", 
+              "lowercase",
               "filter_ascii_folding"
             ]
           }
@@ -93,6 +93,14 @@
           "corporate_name": {
             "type": "keyword",
             "index": "false"
+          },
+          "alpha_key": {
+            "type": "text",
+            "index": "true"
+          },
+          "ordered_alpha_key": {
+            "type": "text",
+            "index": "true"
           },
           "corporate_name_start": {
             "type": "text",

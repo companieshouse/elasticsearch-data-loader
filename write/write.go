@@ -9,6 +9,7 @@ const (
 	postRequestErrors  = "errors/postRequestErrors.txt"
 	unexpectedResponse = "errors/unexpectedResponse.txt"
 	missingCompanyName = "errors/missingCompanyName.txt"
+	alphaKeyErrors     = "errors/alphaKeyErrors.txt"
 )
 
 // Writer provides an interface by which to write error messages to log files
@@ -16,6 +17,7 @@ type Writer interface {
 	LogPostError(msg string)
 	LogUnexpectedResponse(msg string)
 	LogMissingCompanyName(msg string)
+	LogAlphaKeyErrors(msg string)
 	Close()
 }
 
@@ -24,6 +26,7 @@ type Write struct {
 	pe  *os.File
 	ur  *os.File
 	mcn *os.File
+	ake *os.File
 }
 
 // NewWriter returns a concrete implementation of the Writer interface
@@ -44,10 +47,16 @@ func NewWriter() Writer {
 		log.Fatalf("error opening [%s] file", missingCompanyName)
 	}
 
+	alphaKeyErrorsFile, err := os.OpenFile(alphaKeyErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatalf("error opening [%s] file", alphaKeyErrors)
+	}
+
 	return &Write{
 		pe:  postErrorFile,
 		ur:  unexpectedResponseFile,
 		mcn: missingCompanyNameFile,
+		ake: alphaKeyErrorsFile,
 	}
 }
 
@@ -78,6 +87,10 @@ func (w *Write) LogUnexpectedResponse(msg string) {
 // LogMissingCompanyName logs an error to the 'missing-company-name' file
 func (w *Write) LogMissingCompanyName(msg string) {
 	writeToFile(w.mcn, missingCompanyName, msg)
+}
+
+func (w *Write) LogAlphaKeyErrors(msg string) {
+	writeToFile(w.ake, alphaKeyErrors, msg)
 }
 
 func writeToFile(connection *os.File, fileName string, msg string) {
