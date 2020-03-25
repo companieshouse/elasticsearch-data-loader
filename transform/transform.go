@@ -67,6 +67,7 @@ func (t *Transform) TransformMongoCompanyToEsCompany(mongoCompany *datastructure
 	}
 
 	dest.Items = items
+	dest.OrderedAlphaKeyWithID = alphaKey.OrderedAlphaKey + ":" + mongoCompany.ID
 
 	return &dest
 }

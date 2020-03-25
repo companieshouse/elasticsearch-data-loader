@@ -2,11 +2,12 @@ package datastructures
 
 // EsCompany holds a set of items containing company data relevant to Elastic Search
 type EsCompany struct {
-	ID          string
-	CompanyType string   `json:"company_type"`
-	Items       EsItem   `json:"items"`
-	Kind        string   `json:"kind"`
-	Links       *EsLinks `json:"links"`
+	ID                    string
+	CompanyType           string   `json:"company_type"`
+	Items                 EsItem   `json:"items"`
+	Kind                  string   `json:"kind"`
+	Links                 *EsLinks `json:"links"`
+	OrderedAlphaKeyWithID string   `json:"ordered_alpha_key_with_id"`
 }
 
 // EsItem holds an individual company's data
