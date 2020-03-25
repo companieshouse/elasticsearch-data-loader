@@ -1,10 +1,30 @@
 {
   "settings": {
     "index": {
-      "number_of_replicas": 3,
-      "number_of_shards": 5,
+      "number_of_replicas": 1,
+      "number_of_shards": 3,
+      "refresh_interval": "30s",
       "analysis": {
         "analyzer": {
+          "analyzer_startswith":{
+            "tokenizer":"keyword",
+            "filter":["lowercase", "filter_whitespace_remove"]
+          },
+          "startswith_no_ws_punc":{
+            "tokenizer":"keyword",
+            "filter":["lowercase", "filter_ws_punc_remove"]
+          },
+          "analyzer_unique_tf": {
+              "tokenizer": "standard",
+              "filter": ["lowercase", "filter_whitespace_remove", "unique"]
+          },
+          "analyzer_limit_first": {
+            "tokenizer": "standard",
+            "filter": ["lowercase", "limit"]
+          },
+          "analyzer_elastic" : {
+            "tokenizer": "standard"
+          },
           "analyzer_whitespace_token": {
             "type": "custom",
             "tokenizer": "whitespace",
@@ -45,6 +65,11 @@
             "type": "pattern_replace",
             "pattern": "\\s+",
             "replacement":""
+          },
+          "filter_ws_punc_remove": {
+            "type": "pattern_replace",
+            "pattern": "[\\s+|\\p{Punct}]",
+            "replacement":""
           }
         },
         "tokenizer": {
@@ -71,60 +96,117 @@
     }
   },
   "mappings": {
+    "_meta": {
+        "description": "Created by john mcbride for testing"
+    },
     "properties": {
+      "corporate_stripped": {
+        "type": "keyword",
+        "ignore_above": 256
+      },
+      "corporate_with_type": {
+        "type": "keyword",
+        "ignore_above": 256
+      },
+      "alpha_key_with_id": {
+        "type": "keyword",
+        "ignore_above": 256
+      },
+      "ordered_alpha_key_with_id": {
+        "type": "keyword",
+        "ignore_above": 256
+      },
+      "corporate_stripped_len": {
+        "type": "integer"
+      },
+      "ID": {
+        "type": "keyword",
+        "ignore_above": 256
+      },
       "active_count": {
-        "index": "false",
         "type": "integer"
       },
       "company_type": {
-        "type": "keyword",
-        "index": "false"
+        "type": "keyword"
       },
       "items": {
         "properties": {
           "company_number": {
-            "type": "keyword",
-            "index": "false"
+            "type": "keyword"
           },
           "company_status": {
-            "type": "keyword",
-            "index": "false"
+            "type": "keyword"
           },
           "corporate_name": {
             "type": "keyword",
-            "index": "false"
+            "fields":{
+                "startswith": {
+                    "analyzer":"analyzer_startswith",
+                    "type": "text"
+                },
+                "startswith_stripped": {
+                    "analyzer":"startswith_no_ws_punc",
+                    "type": "text"
+                },
+                "edge_ngrams": {
+                    "analyzer": "analyzer_edge_ngram_token",
+                    "type": "text"
+                },
+                "unique": {
+                  "analyzer": "analyzer_unique_tf",
+                  "type": "text"
+                },
+                "simple": {
+                  "analyzer": "simple",
+                  "type": "text"
+                },
+                "nonorms": {
+                  "norms": "false",
+                  "type": "text"
+                },
+                "doconly": {
+                  "index_options": "docs",
+                  "type": "text"
+                },
+                "word_count": {
+                  "type": "token_count",
+                  "analyzer": "standard"
+                },
+                "first_token": {
+                  "type": "text",
+                  "analyzer": "analyzer_limit_first"
+                }
+            }
           },
           "alpha_key": {
             "type": "text",
-            "index": "true"
-          },
-          "ordered_alpha_key": {
-            "type": "text",
-            "index": "true"
-          },
-          "corporate_name_start": {
-            "type": "text",
-            "analyzer": "analyzer_whitespace_token",
+            "index": "true",
             "fields": {
-                "edge_ngram": {
-                  "type": "text",
-                  "analyzer": "analyzer_edge_ngram_token",
-                  "search_analyzer": "analyzer_whitespace_token"
-              },
-                "sort": {
-                  "type": "text",
-                  "analyzer": "analyzer_keyword_token_sort",
-                  "fielddata": true
+              "keyword": {
+                "type": "keyword"
               }
             }
           },
+          "ordered_alpha_key": {
+            "type": "text",
+            "index": "true",
+            "fields": {
+              "keyword": {
+                "type": "keyword"
+              }
+            }
+          },
+          "corporate_name_start": {
+            "type": "keyword",
+            "ignore_above": 256
+          },
           "corporate_name_ending": {
             "type": "keyword",
-            "index": "false"
+            "ignore_above": 256
           },
           "record_type": {
             "type": "keyword",
-            "index": "false"
+            "ignore_above": 256
           }
         }
       },
