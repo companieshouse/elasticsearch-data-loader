@@ -97,7 +97,7 @@
   },
   "mappings": {
     "_meta": {
-        "description": "Created by john mcbride for testing"
+        "description": "Mappings for alphabetical search"
     },
     "properties": {
       "corporate_stripped": {
