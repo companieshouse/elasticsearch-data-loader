@@ -39,6 +39,7 @@ test-integration:
 
 .PHONY: clean
 clean:
+	go mod tidy
 	rm -f $(bin)
 	rm -f *.zip
 	rm -rf build-*
