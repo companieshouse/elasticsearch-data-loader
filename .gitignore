@@ -13,6 +13,3 @@ lint.txt
 # Mac files
 .DS_Store
 
-# Package management files
-go.mod
-go.sum
