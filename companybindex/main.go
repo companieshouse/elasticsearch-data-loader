@@ -84,6 +84,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("error creating mongoDB session: %s", err)
 	}
+
+	// defer client.Disconnect(context.TODO())
 	go status()
 	companyProfileCollection := client.Database(mongoDatabase).Collection(mongoCollection)
 	findOptions := options.Find()
@@ -93,32 +95,71 @@ func main() {
 		log.Fatalf("error reading from collection: %s", err)
 	}
 
-	var results []bson.D
-	if err = cur.All(context.TODO(), &results); err != nil {
-		panic(err)
-	}
-	for {
+	// var results []bson.D
+	// if err = cur.All(context.TODO(), &results); err != nil {
+	// 	panic(err)
+	// }
+	// for _, result := range results {
+	// 	fmt.Println(result)
+	// }
+	defer cur.Close(context.TODO())
+	for cur.Next((context.TODO())) {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
-
 		itx := 0
+		// fmt.Println(result)
 		for ; itx < len(companies); itx++ {
 			result := datastructures.MongoCompany{}
-
-			err = cur.Decode(&result)
-			if err != nil {
-				break
+			if err = cur.Decode(&result); err != nil {
+				log.Fatal(err)
 			}
 			companies[itx] = &result
+			if !cur.Next(context.TODO()) {
+				break
+			}
+			// fmt.Println(companies[itx])
+
 		}
-		// No results read from iterator. Nothing more to do.
+
 		if itx == 0 {
 			break
 		}
 
-		// This will block if we've reached our concurrency limit (sem buffer size)
 		sendToES(&companies, itx, w, f)
 	}
 	fmt.Print("Cursor loop completed")
+
+	time.Sleep(5 * time.Second)
+	syncWaitGroup.Wait()
+
+	w.Close()
+
+	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
+	// for {
+	// 	companies := make([]*datastructures.MongoCompany, mongoSize)
+	// 	fmt.Println(len(companies))
+	// 	itx := 0
+	// 	for ; itx < len(companies); itx++ {
+	// 		result := datastructures.MongoCompany{}
+	// 		fmt.Println(result)
+	// 		err = cur.Decode(&result)
+
+	// 		if err != nil {
+	// 			fmt.Printf("oops %s", err)
+	// 			break
+	// 		} else {
+	// 			fmt.Printf("%s", result.Data.CompanyName)
+	// 		}
+	// 		companies[itx] = &result
+	// 	}
+	// 	// No results read from iterator. Nothing more to do.
+	// 	if itx == 0 {
+	// 		break
+	// 	}
+
+	// 	// This will block if we've reached our concurrency limit (sem buffer size)
+	// 	sendToES(&companies, itx, w, f)
+	// }
+	// fmt.Print("Cursor loop completed")
 
 	/* 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
@@ -141,12 +182,12 @@ func main() {
 		sendToES(&companies, itx, w, f)
 	} */
 
-	time.Sleep(5 * time.Second)
-	syncWaitGroup.Wait()
+	// time.Sleep(5 * time.Second)
+	// syncWaitGroup.Wait()
 
-	w.Close()
+	// w.Close()
 
-	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
+	// log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
 }
 
 // ---------------------------------------------------------------------------
