@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -13,8 +14,11 @@ import (
 	"github.com/companieshouse/elasticsearch-data-loader/transform"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
 
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 var (
@@ -75,17 +79,48 @@ func main() {
 
 	w := write.NewWriter()
 	f := format.NewFormatter()
-
-	s, err := mgo.Dial(mongoURL)
+	//s, err := mgo.Dial(mongoURL)
+	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(mongoURL))
 	if err != nil {
 		log.Fatalf("error creating mongoDB session: %s", err)
 	}
 	go status()
-	defer s.Close()
+	companyProfileCollection := client.Database(mongoDatabase).Collection(mongoCollection)
+	findOptions := options.Find()
+	findOptions.SetBatchSize(int32(mongoSize))
+	cur, err := companyProfileCollection.Find(context.TODO(), bson.D{}, findOptions)
+	if err != nil {
+		log.Fatalf("error reading from collection: %s", err)
+	}
 
-	it := s.DB(mongoDatabase).C(mongoCollection).Find(bson.M{}).Batch(mongoSize).Iter()
-
+	var results []bson.D
+	if err = cur.All(context.TODO(), &results); err != nil {
+		panic(err)
+	}
 	for {
+		companies := make([]*datastructures.MongoCompany, mongoSize)
+
+		itx := 0
+		for ; itx < len(companies); itx++ {
+			result := datastructures.MongoCompany{}
+
+			err = cur.Decode(&result)
+			if err != nil {
+				break
+			}
+			companies[itx] = &result
+		}
+		// No results read from iterator. Nothing more to do.
+		if itx == 0 {
+			break
+		}
+
+		// This will block if we've reached our concurrency limit (sem buffer size)
+		sendToES(&companies, itx, w, f)
+	}
+	fmt.Print("Cursor loop completed")
+
+	/* 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
 
 		itx := 0
@@ -104,7 +139,7 @@ func main() {
 
 		// This will block if we've reached our concurrency limit (sem buffer size)
 		sendToES(&companies, itx, w, f)
-	}
+	} */
 
 	time.Sleep(5 * time.Second)
 	syncWaitGroup.Wait()
