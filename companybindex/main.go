@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -79,13 +78,18 @@ func main() {
 
 	w := write.NewWriter()
 	f := format.NewFormatter()
-	//s, err := mgo.Dial(mongoURL)
 	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(mongoURL))
 	if err != nil {
 		log.Fatalf("error creating mongoDB session: %s", err)
 	}
 
-	// defer client.Disconnect(context.TODO())
+	defer func(client *mongo.Client, ctx context.Context) {
+		err := client.Disconnect(ctx)
+		if err != nil {
+			log.Fatalf("error disconnecting from client: %s", err)
+		}
+	}(client, context.TODO())
+
 	go status()
 	companyProfileCollection := client.Database(mongoDatabase).Collection(mongoCollection)
 	findOptions := options.Find()
@@ -95,18 +99,9 @@ func main() {
 		log.Fatalf("error reading from collection: %s", err)
 	}
 
-	// var results []bson.D
-	// if err = cur.All(context.TODO(), &results); err != nil {
-	// 	panic(err)
-	// }
-	// for _, result := range results {
-	// 	fmt.Println(result)
-	// }
-	// defer cur.Close(context.TODO())
 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
 		itx := 0
-		// fmt.Println(result)
 		for ; itx < len(companies); itx++ {
 			if !cur.Next(context.TODO()) {
 				break
@@ -116,66 +111,8 @@ func main() {
 				log.Fatal(err)
 			}
 			companies[itx] = &result
-
-			// fmt.Println(companies[itx])
-
 		}
 
-		if itx == 0 {
-			break
-		}
-		// fmt.Println(companies[499])
-		sendToES(&companies, itx, w, f)
-		// fmt.Println("BREAK")
-
-	}
-	fmt.Print("Cursor loop completed")
-
-	time.Sleep(5 * time.Second)
-	syncWaitGroup.Wait()
-
-	w.Close()
-
-	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
-	// for {
-	// 	companies := make([]*datastructures.MongoCompany, mongoSize)
-	// 	fmt.Println(len(companies))
-	// 	itx := 0
-	// 	for ; itx < len(companies); itx++ {
-	// 		result := datastructures.MongoCompany{}
-	// 		fmt.Println(result)
-	// 		err = cur.Decode(&result)
-
-	// 		if err != nil {
-	// 			fmt.Printf("oops %s", err)
-	// 			break
-	// 		} else {
-	// 			fmt.Printf("%s", result.Data.CompanyName)
-	// 		}
-	// 		companies[itx] = &result
-	// 	}
-	// 	// No results read from iterator. Nothing more to do.
-	// 	if itx == 0 {
-	// 		break
-	// 	}
-
-	// 	// This will block if we've reached our concurrency limit (sem buffer size)
-	// 	sendToES(&companies, itx, w, f)
-	// }
-	// fmt.Print("Cursor loop completed")
-
-	/* 	for {
-		companies := make([]*datastructures.MongoCompany, mongoSize)
-
-		itx := 0
-		for ; itx < len(companies); itx++ {
-			result := datastructures.MongoCompany{}
-
-			if !it.Next(&result) {
-				break
-			}
-			companies[itx] = &result
-		}
 		// No results read from iterator. Nothing more to do.
 		if itx == 0 {
 			break
@@ -183,14 +120,14 @@ func main() {
 
 		// This will block if we've reached our concurrency limit (sem buffer size)
 		sendToES(&companies, itx, w, f)
-	} */
+	}
 
-	// time.Sleep(5 * time.Second)
-	// syncWaitGroup.Wait()
+	time.Sleep(5 * time.Second)
+	syncWaitGroup.Wait()
 
-	// w.Close()
+	w.Close()
 
-	// log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
+	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
 }
 
 // ---------------------------------------------------------------------------
