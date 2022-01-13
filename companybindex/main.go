@@ -102,20 +102,21 @@ func main() {
 	// for _, result := range results {
 	// 	fmt.Println(result)
 	// }
-	defer cur.Close(context.TODO())
-	for cur.Next((context.TODO())) {
+	// defer cur.Close(context.TODO())
+	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
 		itx := 0
 		// fmt.Println(result)
 		for ; itx < len(companies); itx++ {
+			if !cur.Next(context.TODO()) {
+				break
+			}
 			result := datastructures.MongoCompany{}
 			if err = cur.Decode(&result); err != nil {
 				log.Fatal(err)
 			}
 			companies[itx] = &result
-			if !cur.Next(context.TODO()) {
-				break
-			}
+
 			// fmt.Println(companies[itx])
 
 		}
@@ -123,8 +124,10 @@ func main() {
 		if itx == 0 {
 			break
 		}
-
+		// fmt.Println(companies[499])
 		sendToES(&companies, itx, w, f)
+		// fmt.Println("BREAK")
+
 	}
 	fmt.Print("Cursor loop completed")
 
