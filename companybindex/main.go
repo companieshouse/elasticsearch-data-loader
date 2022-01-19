@@ -20,6 +20,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+const mongoTimeout = time.Duration(5) * time.Second
+const elasticSearchTimeout = time.Duration(30) * time.Second
+
 var (
 	alphakeyURL = "http://chs-alphakey-pp.internal.ch"
 	esDestURL   = "http://localhost:9200"
@@ -78,32 +81,38 @@ func main() {
 
 	w := write.NewWriter()
 	f := format.NewFormatter()
-	client, err := mongo.Connect(context.TODO(), options.Client().ApplyURI(mongoURL))
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURL))
 	if err != nil {
 		log.Fatalf("error creating mongoDB session: %s", err)
 	}
 
+	ctx, cancel := context.WithTimeout(context.Background(), mongoTimeout)
+	defer cancel()
 	defer func(client *mongo.Client, ctx context.Context) {
 		err := client.Disconnect(ctx)
 		if err != nil {
 			log.Fatalf("error disconnecting from client: %s", err)
 		}
-	}(client, context.TODO())
+	}(client, ctx)
 
 	go status()
 	companyProfileCollection := client.Database(mongoDatabase).Collection(mongoCollection)
 	findOptions := options.Find()
 	findOptions.SetBatchSize(int32(mongoSize))
-	cur, err := companyProfileCollection.Find(context.TODO(), bson.D{}, findOptions)
+	ctx2, cancel2 := context.WithTimeout(context.Background(), mongoTimeout)
+	defer cancel2()
+	cur, err := companyProfileCollection.Find(ctx2, bson.D{}, findOptions)
 	if err != nil {
 		log.Fatalf("error reading from collection: %s", err)
 	}
 
+	ctx3, cancel3 := context.WithTimeout(context.Background(), elasticSearchTimeout)
+	defer cancel3()
 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
 		itx := 0
 		for ; itx < len(companies); itx++ {
-			if !cur.Next(context.TODO()) {
+			if !cur.Next(ctx3) {
 				break
 			}
 			result := datastructures.MongoCompany{}
