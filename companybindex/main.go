@@ -13,9 +13,15 @@ import (
 	"github.com/companieshouse/elasticsearch-data-loader/transform"
 	"github.com/companieshouse/elasticsearch-data-loader/write"
 
-	"gopkg.in/mgo.v2"
-	"gopkg.in/mgo.v2/bson"
+	"context"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+const mongoTimeout = time.Duration(5) * time.Second
+const elasticSearchTimeout = time.Duration(30) * time.Second
 
 var (
 	alphakeyURL = "http://chs-alphakey-pp.internal.ch"
@@ -75,28 +81,47 @@ func main() {
 
 	w := write.NewWriter()
 	f := format.NewFormatter()
-
-	s, err := mgo.Dial(mongoURL)
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURL))
 	if err != nil {
 		log.Fatalf("error creating mongoDB session: %s", err)
 	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), mongoTimeout)
+	defer cancel()
+	defer func(client *mongo.Client, ctx context.Context) {
+		err := client.Disconnect(ctx)
+		if err != nil {
+			log.Fatalf("error disconnecting from client: %s", err)
+		}
+	}(client, ctx)
+
 	go status()
-	defer s.Close()
+	companyProfileCollection := client.Database(mongoDatabase).Collection(mongoCollection)
+	findOptions := options.Find()
+	findOptions.SetBatchSize(int32(mongoSize))
+	ctx2, cancel2 := context.WithTimeout(context.Background(), mongoTimeout)
+	defer cancel2()
+	cur, err := companyProfileCollection.Find(ctx2, bson.D{}, findOptions)
+	if err != nil {
+		log.Fatalf("error reading from collection: %s", err)
+	}
 
-	it := s.DB(mongoDatabase).C(mongoCollection).Find(bson.M{}).Batch(mongoSize).Iter()
-
+	ctx3, cancel3 := context.WithTimeout(context.Background(), elasticSearchTimeout)
+	defer cancel3()
 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
-
 		itx := 0
 		for ; itx < len(companies); itx++ {
-			result := datastructures.MongoCompany{}
-
-			if !it.Next(&result) {
+			if !cur.Next(ctx3) {
 				break
+			}
+			result := datastructures.MongoCompany{}
+			if err = cur.Decode(&result); err != nil {
+				log.Fatal(err)
 			}
 			companies[itx] = &result
 		}
+
 		// No results read from iterator. Nothing more to do.
 		if itx == 0 {
 			break
