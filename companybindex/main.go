@@ -21,7 +21,6 @@ import (
 )
 
 const mongoTimeout = time.Duration(5) * time.Second
-const elasticSearchTimeout = time.Duration(30) * time.Second
 
 var (
 	alphakeyURL = "http://chs-alphakey-pp.internal.ch"
@@ -106,7 +105,7 @@ func main() {
 		log.Fatalf("error reading from collection: %s", err)
 	}
 
-	ctx3, cancel3 := context.WithTimeout(context.Background(), elasticSearchTimeout)
+	ctx3, cancel3 := context.WithCancel(context.Background())
 	defer cancel3()
 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
