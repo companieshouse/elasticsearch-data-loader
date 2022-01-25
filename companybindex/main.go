@@ -121,6 +121,10 @@ func main() {
 			companies[itx] = &result
 		}
 
+		if err := cur.Err(); err != nil {
+			log.Fatalf("error iterating the collection: %s", err)
+		}
+
 		// No results read from iterator. Nothing more to do.
 		if itx == 0 {
 			break
