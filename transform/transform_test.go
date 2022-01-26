@@ -202,7 +202,7 @@ func TestUnitGetCompanyNamesMongoCompanyWithEmptyName(t *testing.T) {
 
 				So(len(companyNames), ShouldEqual, 1)
 
-				Convey("And the names should be in order", func() {
+				Convey("And the company name should be empty", func() {
 
 					So(companyNames[0].Name, ShouldEqual, "")
 
@@ -230,7 +230,13 @@ func TestUnitGetCompanyNamesNilMongoData(t *testing.T) {
 
 		Convey("When I call GetCompanyNames", func() {
 
-			mwf.GetCompanyNames(&companies, 1)
+			companyNames := mwf.GetCompanyNames(&companies, 1)
+
+			Convey("Then I expect an empty CompanyNames to be returned", func() {
+
+				So(len(companyNames), ShouldEqual, 0)
+
+			})
 
 		})
 	})
@@ -244,13 +250,19 @@ func TestUnitGetCompanyNamesNilCompanies(t *testing.T) {
 	mf := format.NewMockFormatter(ctrl)
 	mwf := NewTransformer(mw, mf)
 
-	Convey("Given I have an array of one nil mongo company", t, func() {
+	Convey("Given I have a nil array of mongo companies", t, func() {
 
 		var companies []*datastructures.MongoCompany = nil //[]*datastructures.MongoCompany{nil}
 
 		Convey("When I call GetCompanyNames", func() {
 
-			mwf.GetCompanyNames(&companies, 0)
+			companyNames := mwf.GetCompanyNames(&companies, 0)
+
+			Convey("Then I expect an empty CompanyNames to be returned", func() {
+
+				So(len(companyNames), ShouldEqual, 0)
+
+			})
 
 		})
 	})
@@ -270,7 +282,13 @@ func TestUnitGetCompanyNamesNilMongoCompany(t *testing.T) {
 
 		Convey("When I call GetCompanyNames", func() {
 
-			mwf.GetCompanyNames(&companies, 1)
+			companyNames := mwf.GetCompanyNames(&companies, 1)
+
+			Convey("Then I expect an empty CompanyNames to be returned", func() {
+
+				So(len(companyNames), ShouldEqual, 0)
+
+			})
 
 		})
 	})
