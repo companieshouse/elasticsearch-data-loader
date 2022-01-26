@@ -82,7 +82,7 @@ func (t *Transform) GetCompanyNames(companies *[]*datastructures.MongoCompany, l
 		case mongoCompany == nil:
 			log.Printf("Missing company element")
 		case mongoCompany.Data == nil:
-			log.Printf("Missing company data element")
+			t.w.LogMissingCompanyData(fmt.Sprintf("Missing company data element for company ID %s", mongoCompany.ID))
 		default:
 			companyNames = append(companyNames, datastructures.CompanyName{Name: (*companies)[i].Data.CompanyName})
 		}

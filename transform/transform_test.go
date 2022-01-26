@@ -223,12 +223,15 @@ func TestUnitGetCompanyNamesNilMongoData(t *testing.T) {
 	Convey("Given I have an array of one mongo company with no name", t, func() {
 
 		mc1 := datastructures.MongoCompany{
+			ID:   "1",
 			Data: nil,
 		}
 
 		companies := []*datastructures.MongoCompany{&mc1 /*, &mc2, &mc3*/}
 
 		Convey("When I call GetCompanyNames", func() {
+
+			mw.EXPECT().LogMissingCompanyData("Missing company data element for company ID 1")
 
 			companyNames := mwf.GetCompanyNames(&companies, 1)
 
