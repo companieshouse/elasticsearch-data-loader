@@ -175,3 +175,121 @@ func TestUnitGetCompanyNames(t *testing.T) {
 		})
 	})
 }
+
+func TestUnitGetCompanyNamesMongoCompanyWithEmptyName(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+
+	mw := write.NewMockWriter(ctrl)
+	mf := format.NewMockFormatter(ctrl)
+	mwf := NewTransformer(mw, mf)
+
+	Convey("Given I have a mongo company with no name", t, func() {
+
+		mongoCompanyWithNoName := datastructures.MongoCompany{
+			Data: &datastructures.MongoData{
+				CompanyName: "",
+			},
+		}
+
+		companies := []*datastructures.MongoCompany{&mongoCompanyWithNoName}
+
+		Convey("When I call GetCompanyNames", func() {
+
+			companyNames := mwf.GetCompanyNames(&companies, 1)
+
+			Convey("Then I expect a CompanyNames to be returned", func() {
+
+				So(len(companyNames), ShouldEqual, 1)
+
+				Convey("And the company name should be empty", func() {
+
+					So(companyNames[0].Name, ShouldEqual, "")
+
+				})
+			})
+		})
+	})
+}
+
+func TestUnitGetCompanyNamesNilMongoData(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+
+	mw := write.NewMockWriter(ctrl)
+	mf := format.NewMockFormatter(ctrl)
+	mwf := NewTransformer(mw, mf)
+
+	Convey("Given I have an array of one mongo company with no name", t, func() {
+
+		mc1 := datastructures.MongoCompany{
+			Data: nil,
+		}
+
+		companies := []*datastructures.MongoCompany{&mc1 /*, &mc2, &mc3*/}
+
+		Convey("When I call GetCompanyNames", func() {
+
+			companyNames := mwf.GetCompanyNames(&companies, 1)
+
+			Convey("Then I expect an empty CompanyNames to be returned", func() {
+
+				So(len(companyNames), ShouldEqual, 0)
+
+			})
+
+		})
+	})
+}
+
+func TestUnitGetCompanyNamesNilCompanies(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+
+	mw := write.NewMockWriter(ctrl)
+	mf := format.NewMockFormatter(ctrl)
+	mwf := NewTransformer(mw, mf)
+
+	Convey("Given I have a nil array of mongo companies", t, func() {
+
+		var companies []*datastructures.MongoCompany = nil //[]*datastructures.MongoCompany{nil}
+
+		Convey("When I call GetCompanyNames", func() {
+
+			companyNames := mwf.GetCompanyNames(&companies, 0)
+
+			Convey("Then I expect an empty CompanyNames to be returned", func() {
+
+				So(len(companyNames), ShouldEqual, 0)
+
+			})
+
+		})
+	})
+}
+
+func TestUnitGetCompanyNamesNilMongoCompany(t *testing.T) {
+
+	ctrl := gomock.NewController(t)
+
+	mw := write.NewMockWriter(ctrl)
+	mf := format.NewMockFormatter(ctrl)
+	mwf := NewTransformer(mw, mf)
+
+	Convey("Given I have an array of one nil mongo company", t, func() {
+
+		companies := []*datastructures.MongoCompany{nil}
+
+		Convey("When I call GetCompanyNames", func() {
+
+			companyNames := mwf.GetCompanyNames(&companies, 1)
+
+			Convey("Then I expect an empty CompanyNames to be returned", func() {
+
+				So(len(companyNames), ShouldEqual, 0)
+
+			})
+
+		})
+	})
+}

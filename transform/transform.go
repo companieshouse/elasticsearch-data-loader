@@ -77,7 +77,15 @@ func (t *Transform) GetCompanyNames(companies *[]*datastructures.MongoCompany, l
 
 	var companyNames []datastructures.CompanyName
 	for i := 0; i < length; i++ {
-		companyNames = append(companyNames, datastructures.CompanyName{Name: (*companies)[i].Data.CompanyName})
+		mongoCompany := (*companies)[i]
+		switch {
+		case mongoCompany == nil:
+			log.Printf("Missing company element")
+		case mongoCompany.Data == nil:
+			log.Printf("Missing company data element")
+		default:
+			companyNames = append(companyNames, datastructures.CompanyName{Name: (*companies)[i].Data.CompanyName})
+		}
 	}
 
 	return companyNames
