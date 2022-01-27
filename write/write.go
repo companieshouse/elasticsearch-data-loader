@@ -81,6 +81,12 @@ func (w *Write) Close() {
 	if err := w.mcn.Close(); err != nil {
 		log.Fatalf("error closing file: %s", err)
 	}
+	if err := w.mcd.Close(); err != nil {
+		log.Fatalf("error closing file: %s", err)
+	}
+	if err := w.ake.Close(); err != nil {
+		log.Fatalf("error closing file: %s", err)
+	}
 }
 
 // LogPostError logs an error to the 'error-posting-request' file
@@ -101,7 +107,7 @@ func (w *Write) LogMissingCompanyName(msg string) {
 // LogMissingCompanyData logs an error to the 'missingCompanyData' file
 func (w *Write) LogMissingCompanyData(msg string) {
 	log.Println(msg) // This really is very bad data, log to console too.
-	writeToFile(w.mcn, missingCompanyData, msg)
+	writeToFile(w.mcd, missingCompanyData, msg)
 }
 
 func (w *Write) LogAlphaKeyErrors(msg string) {
