@@ -81,13 +81,19 @@ func (t *Transform) GetCompanyNames(companies *[]*datastructures.MongoCompany, l
 		switch {
 		case mongoCompany == nil:
 			log.Printf("Missing company element")
-			companyNames = append(companyNames, datastructures.CompanyName{})
+			companyNames = appendCompanyNamesSpacer(companyNames)
 		case mongoCompany.Data == nil:
-			companyNames = append(companyNames, datastructures.CompanyName{})
+			companyNames = appendCompanyNamesSpacer(companyNames)
 		default:
 			companyNames = append(companyNames, datastructures.CompanyName{Name: (*companies)[i].Data.CompanyName})
 		}
 	}
 
 	return companyNames
+}
+
+// appendCompanyNamesSpacer appends a dummy datastructures.CompanyName{} to companyNames
+// so that the resulting companies can subsequently be logged and skipped correctly.
+func appendCompanyNamesSpacer(companyNames []datastructures.CompanyName) []datastructures.CompanyName {
+	return append(companyNames, datastructures.CompanyName{})
 }
