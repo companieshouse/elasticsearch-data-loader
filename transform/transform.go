@@ -35,7 +35,7 @@ func NewTransformer(writer write.Writer, formatter format.Formatter) Transformer
 // TransformMongoCompanyToEsCompany transforms a MongoCompany and its relevant AlphaKey into its EsCompany counterpart
 func (t *Transform) TransformMongoCompanyToEsCompany(mongoCompany *datastructures.MongoCompany, alphaKey *datastructures.AlphaKey) *datastructures.EsCompany {
 	if mongoCompany.Data == nil {
-		log.Printf("Missing company data element")
+		t.w.LogMissingCompanyData(fmt.Sprintf("Missing company data element for company ID %s", mongoCompany.ID))
 		return nil
 	}
 
@@ -81,8 +81,9 @@ func (t *Transform) GetCompanyNames(companies *[]*datastructures.MongoCompany, l
 		switch {
 		case mongoCompany == nil:
 			log.Printf("Missing company element")
+			companyNames = append(companyNames, datastructures.CompanyName{})
 		case mongoCompany.Data == nil:
-			t.w.LogMissingCompanyData(fmt.Sprintf("Missing company data element for company ID %s", mongoCompany.ID))
+			companyNames = append(companyNames, datastructures.CompanyName{})
 		default:
 			companyNames = append(companyNames, datastructures.CompanyName{Name: (*companies)[i].Data.CompanyName})
 		}
