@@ -60,6 +60,7 @@ func TestUnitTransformMongoCompanyToEsCompany(t *testing.T) {
 		Convey("When I call TransformMongoCompanyToEsCompany", func() {
 
 			mf.EXPECT().SplitCompanyNameEndings(md.CompanyName).Return(nameStart, nameEnd)
+			mw.EXPECT().LogMissingCompanyData("Missing company data element for company ID id")
 
 			esData := mwf.TransformMongoCompanyToEsCompany(&mc, &ak)
 
@@ -84,6 +85,8 @@ func TestUnitTransformMongoCompanyToEsCompany(t *testing.T) {
 		ak := datastructures.AlphaKey{}
 
 		Convey("When I call TransformMongoCompanyToEsCompany", func() {
+
+			mw.EXPECT().LogMissingCompanyData("Missing company data element for company ID ")
 
 			esData := mwf.TransformMongoCompanyToEsCompany(&mc, &ak)
 
@@ -235,9 +238,10 @@ func TestUnitGetCompanyNamesNilMongoData(t *testing.T) {
 
 			companyNames := mwf.GetCompanyNames(&companies, 1)
 
-			Convey("Then I expect an empty CompanyNames to be returned", func() {
+			Convey("Then I expect a CompanyNames containing a spacer company name to be returned", func() {
 
-				So(len(companyNames), ShouldEqual, 0)
+				So(len(companyNames), ShouldEqual, 1)
+				So(companyNames[0].Name, ShouldEqual, datastructures.CompanyName{}.Name)
 
 			})
 
@@ -287,9 +291,10 @@ func TestUnitGetCompanyNamesNilMongoCompany(t *testing.T) {
 
 			companyNames := mwf.GetCompanyNames(&companies, 1)
 
-			Convey("Then I expect an empty CompanyNames to be returned", func() {
+			Convey("Then I expect a CompanyNames containing a spacer company name to be returned", func() {
 
-				So(len(companyNames), ShouldEqual, 0)
+				So(len(companyNames), ShouldEqual, 1)
+				So(companyNames[0].Name, ShouldEqual, datastructures.CompanyName{}.Name)
 
 			})
 
