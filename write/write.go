@@ -9,6 +9,7 @@ const (
 	postRequestErrors  = "errors/postRequestErrors.txt"
 	unexpectedResponse = "errors/unexpectedResponse.txt"
 	missingCompanyName = "errors/missingCompanyName.txt"
+	missingCompanyData = "errors/missingCompanyData.txt"
 	alphaKeyErrors     = "errors/alphaKeyErrors.txt"
 )
 
@@ -17,6 +18,7 @@ type Writer interface {
 	LogPostError(msg string)
 	LogUnexpectedResponse(msg string)
 	LogMissingCompanyName(msg string)
+	LogMissingCompanyData(msg string)
 	LogAlphaKeyErrors(msg string)
 	Close()
 }
@@ -26,6 +28,7 @@ type Write struct {
 	pe  *os.File
 	ur  *os.File
 	mcn *os.File
+	mcd *os.File
 	ake *os.File
 }
 
@@ -47,6 +50,11 @@ func NewWriter() Writer {
 		log.Fatalf("error opening [%s] file", missingCompanyName)
 	}
 
+	missingCompanyDataFile, err := os.OpenFile(missingCompanyData, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	if err != nil {
+		log.Fatalf("error opening [%s] file", missingCompanyData)
+	}
+
 	alphaKeyErrorsFile, err := os.OpenFile(alphaKeyErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
 		log.Fatalf("error opening [%s] file", alphaKeyErrors)
@@ -56,6 +64,7 @@ func NewWriter() Writer {
 		pe:  postErrorFile,
 		ur:  unexpectedResponseFile,
 		mcn: missingCompanyNameFile,
+		mcd: missingCompanyDataFile,
 		ake: alphaKeyErrorsFile,
 	}
 }
@@ -70,6 +79,12 @@ func (w *Write) Close() {
 		log.Fatalf("error closing file: %s", err)
 	}
 	if err := w.mcn.Close(); err != nil {
+		log.Fatalf("error closing file: %s", err)
+	}
+	if err := w.mcd.Close(); err != nil {
+		log.Fatalf("error closing file: %s", err)
+	}
+	if err := w.ake.Close(); err != nil {
 		log.Fatalf("error closing file: %s", err)
 	}
 }
@@ -87,6 +102,12 @@ func (w *Write) LogUnexpectedResponse(msg string) {
 // LogMissingCompanyName logs an error to the 'missing-company-name' file
 func (w *Write) LogMissingCompanyName(msg string) {
 	writeToFile(w.mcn, missingCompanyName, msg)
+}
+
+// LogMissingCompanyData logs an error to the 'missingCompanyData' file
+func (w *Write) LogMissingCompanyData(msg string) {
+	log.Println(msg) // This really is very bad data, log to console too.
+	writeToFile(w.mcd, missingCompanyData, msg)
 }
 
 func (w *Write) LogAlphaKeyErrors(msg string) {
