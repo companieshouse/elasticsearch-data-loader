@@ -12,6 +12,12 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+const (
+	submitBulkToESCalled     = "When SubmitBulkToES is called"
+	returnedBytesShouldBeNil = "And returnedBytes should be nil"
+	errShouldNotBeNil        = "And err should not be nil"
+)
+
 func TestUnitSubmitBulkToES(t *testing.T) {
 
 	ctrl := gomock.NewController(t)
@@ -30,7 +36,7 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 
 		mr.EXPECT().Post(bulk, uri).Return(constructSuccessResponse(), nil)
 
-		Convey("When SubmitBulkToES is called", func() {
+		Convey(submitBulkToESCalled, func() {
 
 			returnedBytes, err := mc.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 
@@ -54,15 +60,15 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 
 			mw.EXPECT().LogPostError(string(companyNumbers)).Times(1)
 
-			Convey("When SubmitBulkToES is called", func() {
+			Convey(submitBulkToESCalled, func() {
 
 				returnedBytes, err := mc.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 
-				Convey("And returnedBytes should be nil", func() {
+				Convey(returnedBytesShouldBeNil, func() {
 
 					So(returnedBytes, ShouldBeNil)
 
-					Convey("And err should not be nil", func() {
+					Convey(errShouldNotBeNil, func() {
 
 						So(err, ShouldNotBeNil)
 					})
@@ -79,15 +85,15 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 
 			mw.EXPECT().LogUnexpectedResponse(string(companyNumbers)).Times(1)
 
-			Convey("When SubmitBulkToES is called", func() {
+			Convey(submitBulkToESCalled, func() {
 
 				returnedBytes, err := mc.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 
-				Convey("And returnedBytes should be nil", func() {
+				Convey(returnedBytesShouldBeNil, func() {
 
 					So(returnedBytes, ShouldBeNil)
 
-					Convey("And err should not be nil", func() {
+					Convey(errShouldNotBeNil, func() {
 
 						So(err, ShouldNotBeNil)
 					})
@@ -141,11 +147,11 @@ func TestUnitGetAlphaKeys(t *testing.T) {
 
 				returnedBytes, err := mc.GetAlphaKeys(companyNames, alphaKeyURL)
 
-				Convey("And returnedBytes should be nil", func() {
+				Convey(returnedBytesShouldBeNil, func() {
 
 					So(returnedBytes, ShouldBeNil)
 
-					Convey("And err should not be nil", func() {
+					Convey(errShouldNotBeNil, func() {
 
 						So(err, ShouldNotBeNil)
 					})

@@ -11,6 +11,8 @@ const (
 	missingCompanyName = "errors/missingCompanyName.txt"
 	missingCompanyData = "errors/missingCompanyData.txt"
 	alphaKeyErrors     = "errors/alphaKeyErrors.txt"
+	errorOpeningFile   = "error opening [%s] file"
+	errorClosingFile   = "error closing file: %s"
 )
 
 // Writer provides an interface by which to write error messages to log files
@@ -37,27 +39,27 @@ func NewWriter() Writer {
 
 	postErrorFile, err := os.OpenFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", postRequestErrors)
+		log.Fatalf(errorOpeningFile, postRequestErrors)
 	}
 
 	unexpectedResponseFile, err := os.OpenFile(unexpectedResponse, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", unexpectedResponse)
+		log.Fatalf(errorOpeningFile, unexpectedResponse)
 	}
 
 	missingCompanyNameFile, err := os.OpenFile(missingCompanyName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", missingCompanyName)
+		log.Fatalf(errorOpeningFile, missingCompanyName)
 	}
 
 	missingCompanyDataFile, err := os.OpenFile(missingCompanyData, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", missingCompanyData)
+		log.Fatalf(errorOpeningFile, missingCompanyData)
 	}
 
 	alphaKeyErrorsFile, err := os.OpenFile(alphaKeyErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", alphaKeyErrors)
+		log.Fatalf(errorOpeningFile, alphaKeyErrors)
 	}
 
 	return &Write{
@@ -73,19 +75,19 @@ func NewWriter() Writer {
 func (w *Write) Close() {
 
 	if err := w.pe.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+		log.Fatalf(errorClosingFile, err)
 	}
 	if err := w.ur.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+		log.Fatalf(errorClosingFile, err)
 	}
 	if err := w.mcn.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+		log.Fatalf(errorClosingFile, err)
 	}
 	if err := w.mcd.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+		log.Fatalf(errorClosingFile, err)
 	}
 	if err := w.ake.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+		log.Fatalf(errorClosingFile, err)
 	}
 }
 

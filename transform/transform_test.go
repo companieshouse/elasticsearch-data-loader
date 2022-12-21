@@ -27,6 +27,9 @@ const (
 	companyOne   = "companyOne"
 	companyTwo   = "companyTwo"
 	companyThree = "companyThree"
+
+	callTransformMongoCompanyToEsCompany = "When I call TransformMongoCompanyToEsCompany"
+	callGetCompanyNames                  = "When I call GetCompanyNames"
 )
 
 func TestUnitTransformMongoCompanyToEsCompany(t *testing.T) {
@@ -57,7 +60,7 @@ func TestUnitTransformMongoCompanyToEsCompany(t *testing.T) {
 			OrderedAlphaKey: orderedAlphaKey,
 		}
 
-		Convey("When I call TransformMongoCompanyToEsCompany", func() {
+		Convey(callTransformMongoCompanyToEsCompany, func() {
 
 			mf.EXPECT().SplitCompanyNameEndings(md.CompanyName).Return(nameStart, nameEnd)
 			mw.EXPECT().LogMissingCompanyData("Missing company data element for company ID id")
@@ -84,7 +87,7 @@ func TestUnitTransformMongoCompanyToEsCompany(t *testing.T) {
 
 		ak := datastructures.AlphaKey{}
 
-		Convey("When I call TransformMongoCompanyToEsCompany", func() {
+		Convey(callTransformMongoCompanyToEsCompany, func() {
 
 			mw.EXPECT().LogMissingCompanyData("Missing company data element for company ID ")
 
@@ -117,7 +120,7 @@ func TestUnitTransformMongoCompanyToEsCompany(t *testing.T) {
 
 			mw.EXPECT().LogMissingCompanyName(mc.ID).Times(1)
 
-			Convey("When I call TransformMongoCompanyToEsCompany", func() {
+			Convey(callTransformMongoCompanyToEsCompany, func() {
 
 				esData := mwf.TransformMongoCompanyToEsCompany(&mc, &ak)
 
@@ -160,7 +163,7 @@ func TestUnitGetCompanyNames(t *testing.T) {
 
 		companies := []*datastructures.MongoCompany{&mc1, &mc2, &mc3}
 
-		Convey("When I call GetCompanyNames", func() {
+		Convey(callGetCompanyNames, func() {
 
 			companyNames := mwf.GetCompanyNames(&companies, 3)
 
@@ -197,7 +200,7 @@ func TestUnitGetCompanyNamesMongoCompanyWithEmptyName(t *testing.T) {
 
 		companies := []*datastructures.MongoCompany{&mongoCompanyWithNoName}
 
-		Convey("When I call GetCompanyNames", func() {
+		Convey(callGetCompanyNames, func() {
 
 			companyNames := mwf.GetCompanyNames(&companies, 1)
 
@@ -232,7 +235,7 @@ func TestUnitGetCompanyNamesNilMongoData(t *testing.T) {
 
 		companies := []*datastructures.MongoCompany{&mc1 /*, &mc2, &mc3*/}
 
-		Convey("When I call GetCompanyNames", func() {
+		Convey(callGetCompanyNames, func() {
 
 			mw.EXPECT().LogMissingCompanyData("Missing company data element for company ID 1")
 
@@ -261,7 +264,7 @@ func TestUnitGetCompanyNamesNilCompanies(t *testing.T) {
 
 		var companies []*datastructures.MongoCompany = nil //[]*datastructures.MongoCompany{nil}
 
-		Convey("When I call GetCompanyNames", func() {
+		Convey(callGetCompanyNames, func() {
 
 			companyNames := mwf.GetCompanyNames(&companies, 0)
 
@@ -287,7 +290,7 @@ func TestUnitGetCompanyNamesNilMongoCompany(t *testing.T) {
 
 		companies := []*datastructures.MongoCompany{nil}
 
-		Convey("When I call GetCompanyNames", func() {
+		Convey(callGetCompanyNames, func() {
 
 			companyNames := mwf.GetCompanyNames(&companies, 1)
 
