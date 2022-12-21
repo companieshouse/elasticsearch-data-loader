@@ -175,64 +175,100 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 		var bulk []byte
 		var companyNumbers []byte
 
-		companyNames := t.GetCompanyNames(companies, length)
-		compNamesBody, err := json.Marshal(companyNames)
-		if err != nil {
-			log.Fatalf("error marshal to json: %s", err)
-		}
+		err, alphaKeys := getAlphaKeys(t, companies, length, c)
 
-		keys, err := c.GetAlphaKeys(compNamesBody, alphakeyURL)
-		if err != nil {
-			log.Fatalf("error fetching alpha keys: %s", err)
-		}
+		bulk, companyNumbers, target =
+			transformMongoCompaniesToEsCompanies(
+				length,
+				t,
+				companies,
+				alphaKeys,
+				bulk,
+				companyNumbers,
+				target)
 
-		var alphaKeys []datastructures.AlphaKey
-		if err := json.Unmarshal(keys, &alphaKeys); err != nil {
-			log.Fatalf("error unmarshalling alphakey response for %s", compNamesBody)
-		}
-
-		i := 0
-		for i < length {
-			company := t.TransformMongoCompanyToEsCompany((*companies)[i], &alphaKeys[i])
-
-			if company != nil {
-				b, err := json.Marshal(company)
-				if err != nil {
-					log.Fatalf("error marshal to json: %s", err)
-				}
-
-				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.ID+"\" } }\n")...)
-				bulk = append(bulk, b...)
-				bulk = append(bulk, []byte("\n")...)
-				companyNumbers = append(companyNumbers, []byte("\n"+company.ID+"")...)
-			} else {
-				skipChannel <- 1
-				target--
-			}
-
-			i++
-		}
-
-		b, err := c.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
-		if err != nil {
+		if submitBulkToES(err, c, bulk, companyNumbers) {
 			return
-		}
-
-		var bulkRes esBulkResponse
-		if err := json.Unmarshal(b, &bulkRes); err != nil {
-			log.Fatalf("error unmarshaling json: [%s] actual response: [%s]", err, b)
-		}
-
-		if bulkRes.Errors {
-			for _, r := range bulkRes.Items {
-				if r["create"].Status != 201 {
-					log.Fatalf("error inserting doc: %s", r["create"].Error)
-				}
-			}
 		}
 
 		insertChannel <- target
 	}()
+}
+
+func submitBulkToES(err error, c eshttp.Client, bulk []byte, companyNumbers []byte) bool {
+	b, err := c.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
+	if err != nil {
+		return true
+	}
+
+	var bulkRes esBulkResponse
+	if err := json.Unmarshal(b, &bulkRes); err != nil {
+		log.Fatalf("error unmarshaling json: [%s] actual response: [%s]", err, b)
+	}
+
+	if bulkRes.Errors {
+		for _, r := range bulkRes.Items {
+			if r["create"].Status != 201 {
+				log.Fatalf("error inserting doc: %s", r["create"].Error)
+			}
+		}
+	}
+	return false
+}
+
+func getAlphaKeys(
+	t transform.Transformer,
+	companies *[]*datastructures.MongoCompany,
+	length int,
+	c eshttp.Client) (error, []datastructures.AlphaKey) {
+	companyNames := t.GetCompanyNames(companies, length)
+	compNamesBody, err := json.Marshal(companyNames)
+	if err != nil {
+		log.Fatalf("error marshal to json: %s", err)
+	}
+
+	keys, err := c.GetAlphaKeys(compNamesBody, alphakeyURL)
+	if err != nil {
+		log.Fatalf("error fetching alpha keys: %s", err)
+	}
+
+	var alphaKeys []datastructures.AlphaKey
+	if err := json.Unmarshal(keys, &alphaKeys); err != nil {
+		log.Fatalf("error unmarshalling alphakey response for %s", compNamesBody)
+	}
+	return err, alphaKeys
+}
+
+func transformMongoCompaniesToEsCompanies(
+	length int,
+	t transform.Transformer,
+	companies *[]*datastructures.MongoCompany,
+	alphaKeys []datastructures.AlphaKey,
+	bulk []byte,
+	companyNumbers []byte,
+	target int) ([]byte, []byte, int) {
+	i := 0
+	for i < length {
+		company := t.TransformMongoCompanyToEsCompany((*companies)[i], &alphaKeys[i])
+
+		if company != nil {
+			b, err := json.Marshal(company)
+			if err != nil {
+				log.Fatalf("error marshal to json: %s", err)
+			}
+
+			bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.ID+"\" } }\n")...)
+			bulk = append(bulk, b...)
+			bulk = append(bulk, []byte("\n")...)
+			companyNumbers = append(companyNumbers, []byte("\n"+company.ID+"")...)
+		} else {
+			skipChannel <- 1
+			target--
+		}
+
+		i++
+	}
+	return bulk, companyNumbers, target
 }
 
 // ---------------------------------------------------------------------------
