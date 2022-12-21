@@ -107,6 +107,18 @@ func main() {
 
 	ctx3, cancel3 := context.WithCancel(context.Background())
 	defer cancel3()
+
+	sendCompaniesToES(cur, ctx3, err, w, f)
+
+	time.Sleep(5 * time.Second)
+	syncWaitGroup.Wait()
+
+	w.Close()
+
+	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
+}
+
+func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w write.Writer, f format.Formatter) {
 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
 		itx := 0
@@ -133,13 +145,6 @@ func main() {
 		// This will block if we've reached our concurrency limit (sem buffer size)
 		sendToES(&companies, itx, w, f)
 	}
-
-	time.Sleep(5 * time.Second)
-	syncWaitGroup.Wait()
-
-	w.Close()
-
-	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
 }
 
 // ---------------------------------------------------------------------------
