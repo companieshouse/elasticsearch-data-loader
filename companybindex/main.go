@@ -234,7 +234,7 @@ func getAlphaKeys(
 
 	var alphaKeys []datastructures.AlphaKey
 	if err := json.Unmarshal(keys, &alphaKeys); err != nil {
-		log.Fatalf("error unmarshalling alphakey response for %s", compNamesBody)
+		log.Fatalf("error %v unmarshalling alphakey response for %s", err, compNamesBody)
 	}
 	return err, alphaKeys
 }
