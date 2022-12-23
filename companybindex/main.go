@@ -48,6 +48,13 @@ var (
 	semaphore     = make(chan int, 5)
 )
 
+// Function variables to facilitate testing.
+var (
+	marshal   = json.Marshal
+	unmarshal = json.Unmarshal
+	fatalf    = log.Fatalf
+)
+
 // ---------------------------------------------------------------------------
 
 type esBulkResponse struct {
@@ -82,7 +89,7 @@ func main() {
 	f := format.NewFormatter()
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURL))
 	if err != nil {
-		log.Fatalf("error creating mongoDB session: %s", err)
+		fatalf("error creating mongoDB session: %s", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoTimeout)
@@ -90,7 +97,7 @@ func main() {
 	defer func(client *mongo.Client, ctx context.Context) {
 		err := client.Disconnect(ctx)
 		if err != nil {
-			log.Fatalf("error disconnecting from client: %s", err)
+			fatalf("error disconnecting from client: %s", err)
 		}
 	}(client, ctx)
 
@@ -102,7 +109,7 @@ func main() {
 	defer cancel2()
 	cur, err := companyProfileCollection.Find(ctx2, bson.D{}, findOptions)
 	if err != nil {
-		log.Fatalf("error reading from collection: %s", err)
+		fatalf("error reading from collection: %s", err)
 	}
 
 	ctx3, cancel3 := context.WithCancel(context.Background())
@@ -134,7 +141,7 @@ func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w wri
 		}
 
 		if err := cur.Err(); err != nil {
-			log.Fatalf("error iterating the collection: %s", err)
+			fatalf("error iterating the collection: %s", err)
 		}
 
 		// No results read from iterator. Nothing more to do.
@@ -202,14 +209,14 @@ func submitBulkToES(err error, c eshttp.Client, bulk []byte, companyNumbers []by
 	}
 
 	var bulkRes esBulkResponse
-	if err := json.Unmarshal(b, &bulkRes); err != nil {
-		log.Fatalf("error unmarshaling json: [%s] actual response: [%s]", err, b)
+	if err := unmarshal(b, &bulkRes); err != nil {
+		fatalf("error unmarshaling json: [%s] actual response: [%s]", err, b)
 	}
 
 	if bulkRes.Errors {
 		for _, r := range bulkRes.Items {
 			if r["create"].Status != 201 {
-				log.Fatalf("error inserting doc: %s", r["create"].Error)
+				fatalf("error inserting doc: %s", r["create"].Error)
 			}
 		}
 	}
@@ -222,19 +229,19 @@ func getAlphaKeys(
 	length int,
 	c eshttp.Client) (error, []datastructures.AlphaKey) {
 	companyNames := t.GetCompanyNames(companies, length)
-	compNamesBody, err := json.Marshal(companyNames)
+	compNamesBody, err := marshal(companyNames)
 	if err != nil {
-		log.Fatalf("error marshal to json: %s", err)
+		fatalf("error marshal to json: %s", err)
 	}
 
 	keys, err := c.GetAlphaKeys(compNamesBody, alphakeyURL)
 	if err != nil {
-		log.Fatalf("error fetching alpha keys: %s", err)
+		fatalf("error fetching alpha keys: %s", err)
 	}
 
 	var alphaKeys []datastructures.AlphaKey
-	if err := json.Unmarshal(keys, &alphaKeys); err != nil {
-		log.Fatalf("error %v unmarshalling alphakey response for %s", err, compNamesBody)
+	if err := unmarshal(keys, &alphaKeys); err != nil {
+		fatalf("error %v unmarshalling alphakey response for %s", err, compNamesBody)
 	}
 	return err, alphaKeys
 }
@@ -252,9 +259,9 @@ func transformMongoCompaniesToEsCompanies(
 		company := t.TransformMongoCompanyToEsCompany((*companies)[i], &alphaKeys[i])
 
 		if company != nil {
-			b, err := json.Marshal(company)
+			b, err := marshal(company)
 			if err != nil {
-				log.Fatalf("error marshal to json: %s", err)
+				fatalf("error marshal to json: %s", err)
 			}
 
 			bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.ID+"\" } }\n")...)
