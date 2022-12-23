@@ -42,24 +42,11 @@ func TestGetAlphaKeys(t *testing.T) {
 
 	Convey("Should handle failure to marshal company names by exiting program", t, func() {
 
-		// Save real functions so that we restore them at the end.
-		realMarshal := marshal
-		defer func() { marshal = realMarshal }()
-		marshal = func(v interface{}) ([]byte, error) {
-			return nil, &json.UnsupportedValueError{
-				Value: reflect.Value{},
-				Str:   "Test generated error",
-			}
-		}
+		restoreJsonMarshal := stubJsonMarshal()
+		defer restoreJsonMarshal()
 
-		realFatalf := fatalf
-		defer func() { fatalf = realFatalf }()
-		fatalf = func(format string, v ...interface{}) {
-			errorMessage := fmt.Sprintf(format, v)
-			// We replace os.Exit() with panic() because it too exits execution at the right point,
-			// but the GoConvey test framework can detect the latter only.
-			panic(errorMessage)
-		}
+		restoreLogFatalf := stubLogFatalf()
+		defer restoreLogFatalf()
 
 		ctrl := gomock.NewController(t)
 		transformer := transform.NewMockTransformer(ctrl)
@@ -80,23 +67,12 @@ func TestGetAlphaKeys(t *testing.T) {
 
 	Convey("Should handle failure to get alpha keys by exiting program", t, func() {
 
-		// Save real functions so that we restore them at the end.
-		realFatalf := fatalf
-		defer func() { fatalf = realFatalf }()
-		fatalf = func(format string, v ...interface{}) {
-			errorMessage := fmt.Sprintf(format, v)
-			// We replace os.Exit() with panic() because it too exits execution at the right point,
-			// but the GoConvey test framework can detect the latter only.
-			panic(errorMessage)
-		}
-
 		unmarshalCalled := false
-		realUnmarshal := unmarshal
-		defer func() { unmarshal = realUnmarshal }()
-		unmarshal = func(data []byte, v interface{}) error {
-			unmarshalCalled = true
-			return nil
-		}
+		restoreJsonUnmarshal := mockJsonUnmarshal(&unmarshalCalled)
+		defer restoreJsonUnmarshal()
+
+		restoreLogFatalf := stubLogFatalf()
+		defer restoreLogFatalf()
 
 		ctrl := gomock.NewController(t)
 		transformer := transform.NewMockTransformer(ctrl)
@@ -119,27 +95,11 @@ func TestGetAlphaKeys(t *testing.T) {
 
 	Convey("Should handle failure to unmarshal company names by exiting program", t, func() {
 
-		// Save real functions so that we restore them at the end.
-		realUnmarshal := unmarshal
-		defer func() { unmarshal = realUnmarshal }()
-		unmarshal = func(data []byte, v interface{}) error {
-			return &json.UnmarshalTypeError{
-				Value:  "Test generated error",
-				Type:   reflect.TypeOf(""),
-				Offset: 0,
-				Struct: "struct",
-				Field:  "field",
-			}
-		}
+		restoreJsonUnmarshal := stubJsonUnmarshal()
+		defer restoreJsonUnmarshal()
 
-		realFatalf := fatalf
-		defer func() { fatalf = realFatalf }()
-		fatalf = func(format string, v ...interface{}) {
-			errorMessage := fmt.Sprintf(format, v)
-			// We replace os.Exit() with panic() because it too exits execution at the right point,
-			// but the GoConvey test framework can detect the latter only.
-			panic(errorMessage)
-		}
+		restoreLogFatalf := stubLogFatalf()
+		defer restoreLogFatalf()
 
 		ctrl := gomock.NewController(t)
 		transformer := transform.NewMockTransformer(ctrl)
@@ -161,4 +121,57 @@ func TestGetAlphaKeys(t *testing.T) {
 
 	})
 
+}
+
+func stubJsonMarshal() func() {
+	// Stub out json.Marshal
+	realMarshal := marshal
+	marshal = func(v interface{}) ([]byte, error) {
+		return nil, &json.UnsupportedValueError{
+			Value: reflect.Value{},
+			Str:   "Test generated error",
+		}
+	}
+	// Return function to restore json.Marshal
+	return func() { marshal = realMarshal }
+}
+
+func stubLogFatalf() func() {
+	// Stub out log.Fatalf
+	realFatalf := fatalf
+	fatalf = func(format string, v ...interface{}) {
+		errorMessage := fmt.Sprintf(format, v)
+		// We replace os.Exit() with panic() because it too exits execution at the right point,
+		// but the GoConvey test framework can detect the latter only.
+		panic(errorMessage)
+	}
+	// Return function to restore log.Fatalf
+	return func() { fatalf = realFatalf }
+}
+
+func mockJsonUnmarshal(unmarshalCalled *bool) func() {
+	// Mock out json.Unmarshal
+	realUnmarshal := unmarshal
+	unmarshal = func(data []byte, v interface{}) error {
+		*unmarshalCalled = true
+		return nil
+	}
+	// Return function to restore json.Unmarshal
+	return func() { unmarshal = realUnmarshal }
+}
+
+func stubJsonUnmarshal() func() {
+	// Stub out json.Unmarshal
+	realUnmarshal := unmarshal
+	unmarshal = func(data []byte, v interface{}) error {
+		return &json.UnmarshalTypeError{
+			Value:  "Test generated error",
+			Type:   reflect.TypeOf(""),
+			Offset: 0,
+			Struct: "struct",
+			Field:  "field",
+		}
+	}
+	// Return function to restore json.Unmarshal
+	return func() { unmarshal = realUnmarshal }
 }
