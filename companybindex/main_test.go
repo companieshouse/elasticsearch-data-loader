@@ -123,6 +123,57 @@ func TestGetAlphaKeys(t *testing.T) {
 
 }
 
+func TestTransformMongoCompaniesToEsCompanies(t *testing.T) {
+
+	Convey("Should transform mongo companies to elasticsearch companies", t, func() {
+
+		ctrl := gomock.NewController(t)
+		transformer := transform.NewMockTransformer(ctrl)
+		companies := []*datastructures.MongoCompany{{
+			ID: "Co",
+		}}
+		keys := []datastructures.AlphaKey{{
+			SameAsAlphaKey:  "true",
+			OrderedAlphaKey: "blah",
+		}}
+
+		transformer.EXPECT().TransformMongoCompanyToEsCompany(
+			&datastructures.MongoCompany{
+				ID: "Co",
+			},
+			&datastructures.AlphaKey{
+				SameAsAlphaKey:  "true",
+				OrderedAlphaKey: "blah",
+			}).Return(&datastructures.EsCompany{
+			ID:                    "",
+			CompanyType:           "",
+			Items:                 datastructures.EsItem{},
+			Kind:                  "",
+			Links:                 nil,
+			OrderedAlphaKeyWithID: "",
+		})
+
+		bulk, companyNumbers, target :=
+			transformMongoCompaniesToEsCompanies(
+				1,
+				transformer,
+				&companies,
+				keys,
+				[]byte("bulk"),
+				[]byte("companyNumbers"),
+				1)
+		So(string(bulk), ShouldContainSubstring,
+			`bulk{ "create": { "_id": "" } }
+{"ID":"","company_type":"","items":{"company_number":"","corporate_name":"","corporate_name_start":`+
+				`"","record_type":"","alpha_key":"","ordered_alpha_key":""},`+
+				`"kind":"","links":null,"ordered_alpha_key_with_id":""}`)
+		So(string(companyNumbers), ShouldEqual, `companyNumbers
+`)
+		So(target, ShouldEqual, 1)
+	})
+
+}
+
 func stubJsonMarshal() func() {
 	// Stub out json.Marshal
 	realMarshal := marshal
