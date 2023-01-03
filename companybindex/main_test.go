@@ -258,6 +258,32 @@ func TestTransformMongoCompaniesToEsCompanies(t *testing.T) {
 	})
 }
 
+func TestSubmitBulkToES(t *testing.T) {
+
+	Convey("Should handle failure to unmarshal bulk response by exiting program", t, func() {
+
+		restoreJsonUnmarshal := stubJsonUnmarshal()
+		defer restoreJsonUnmarshal()
+
+		restoreLogFatalf := stubLogFatalf()
+		defer restoreLogFatalf()
+
+		ctrl := gomock.NewController(t)
+		client := eshttp.NewMockClient(ctrl)
+
+		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
+			Return([]byte("bulk"), nil)
+
+		So(func() {
+			submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		},
+			ShouldPanicWith,
+			"error unmarshaling json: [json: cannot unmarshal Test generated error into Go "+
+				"struct field struct.field of type string] actual response: [bulk]")
+
+	})
+}
+
 func stubJsonMarshal() func() {
 	// Stub out json.Marshal
 	realMarshal := marshal
