@@ -172,6 +172,55 @@ func TestTransformMongoCompaniesToEsCompanies(t *testing.T) {
 		So(target, ShouldEqual, 1)
 	})
 
+	Convey("Should handle failure to marshal company by exiting program", t, func() {
+
+		restoreJsonMarshal := stubJsonMarshal()
+		defer restoreJsonMarshal()
+
+		restoreLogFatalf := stubLogFatalf()
+		defer restoreLogFatalf()
+
+		ctrl := gomock.NewController(t)
+		transformer := transform.NewMockTransformer(ctrl)
+		companies := []*datastructures.MongoCompany{{
+			ID: "Co",
+		}}
+		keys := []datastructures.AlphaKey{{
+			SameAsAlphaKey:  "true",
+			OrderedAlphaKey: "blah",
+		}}
+
+		transformer.EXPECT().TransformMongoCompanyToEsCompany(
+			&datastructures.MongoCompany{
+				ID: "Co",
+			},
+			&datastructures.AlphaKey{
+				SameAsAlphaKey:  "true",
+				OrderedAlphaKey: "blah",
+			}).Return(&datastructures.EsCompany{
+			ID:                    "",
+			CompanyType:           "",
+			Items:                 datastructures.EsItem{},
+			Kind:                  "",
+			Links:                 nil,
+			OrderedAlphaKeyWithID: "",
+		})
+
+		So(func() {
+			transformMongoCompaniesToEsCompanies(
+				1,
+				transformer,
+				&companies,
+				keys,
+				[]byte("bulk"),
+				[]byte("companyNumbers"),
+				1)
+		},
+			ShouldPanicWith,
+			"error marshal to json: [json: unsupported value: Test generated error]")
+
+	})
+
 }
 
 func stubJsonMarshal() func() {
