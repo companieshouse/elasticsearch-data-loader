@@ -221,6 +221,42 @@ func TestTransformMongoCompaniesToEsCompanies(t *testing.T) {
 
 	})
 
+	Convey("Should increment skip count where company is nil", t, func() {
+
+		restoreSkipChannel := stubSkipChannel()
+		defer restoreSkipChannel()
+
+		ctrl := gomock.NewController(t)
+		transformer := transform.NewMockTransformer(ctrl)
+		companies := []*datastructures.MongoCompany{{
+			ID: "Co",
+		}}
+		keys := []datastructures.AlphaKey{{
+			SameAsAlphaKey:  "true",
+			OrderedAlphaKey: "blah",
+		}}
+
+		transformer.EXPECT().TransformMongoCompanyToEsCompany(
+			&datastructures.MongoCompany{
+				ID: "Co",
+			},
+			&datastructures.AlphaKey{
+				SameAsAlphaKey:  "true",
+				OrderedAlphaKey: "blah",
+			}).Return(nil)
+
+		go transformMongoCompaniesToEsCompanies(
+			1,
+			transformer,
+			&companies,
+			keys,
+			[]byte("bulk"),
+			[]byte("companyNumbers"),
+			1)
+		increment := <-skipChannel
+		So(increment, ShouldEqual, 1)
+	})
+
 }
 
 func stubJsonMarshal() func() {
@@ -274,4 +310,13 @@ func stubJsonUnmarshal() func() {
 	}
 	// Return function to restore json.Unmarshal
 	return func() { unmarshal = realUnmarshal }
+}
+
+func stubSkipChannel() func() {
+	// Stub out skipChannel
+	realSkipChannel := skipChannel
+	skipChannel = make(chan int)
+
+	// Return function to restore skipChannel
+	return func() { skipChannel = realSkipChannel }
 }
