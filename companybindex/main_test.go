@@ -61,7 +61,7 @@ func TestGetAlphaKeys(t *testing.T) {
 
 		So(func() { getAlphaKeys(transformer, &companies, 0, client) },
 			ShouldPanicWith,
-			"error marshal to json: [json: unsupported value: Test generated error]")
+			"error marshal to json: json: unsupported value: Test generated error")
 
 	})
 
@@ -88,7 +88,7 @@ func TestGetAlphaKeys(t *testing.T) {
 
 		So(func() { getAlphaKeys(transformer, &companies, 0, client) },
 			ShouldPanicWith,
-			"error fetching alpha keys: [Test generated error]")
+			"error fetching alpha keys: Test generated error")
 		So(unmarshalCalled, ShouldBeFalse)
 
 	})
@@ -115,9 +115,9 @@ func TestGetAlphaKeys(t *testing.T) {
 
 		So(func() { getAlphaKeys(transformer, &companies, 0, client) },
 			ShouldPanicWith,
-			"error [json: cannot unmarshal Test generated error into Go struct field "+
-				"struct.field of type string [91 123 34 110 97 109 101 34 58 34 64 34 125 93]] "+
-				"unmarshalling alphakey response for %!s(MISSING)")
+			"error json: cannot unmarshal Test generated error into Go struct "+
+				"field struct.field of type string unmarshalling alphakey response for"+
+				" [{\"name\":\"@\"}]")
 
 	})
 
@@ -217,7 +217,7 @@ func TestTransformMongoCompaniesToEsCompanies(t *testing.T) {
 				1)
 		},
 			ShouldPanicWith,
-			"error marshal to json: [json: unsupported value: Test generated error]")
+			"error marshal to json: json: unsupported value: Test generated error")
 
 	})
 
@@ -256,7 +256,6 @@ func TestTransformMongoCompaniesToEsCompanies(t *testing.T) {
 		increment := <-skipChannel
 		So(increment, ShouldEqual, 1)
 	})
-
 }
 
 func stubJsonMarshal() func() {
@@ -276,7 +275,7 @@ func stubLogFatalf() func() {
 	// Stub out log.Fatalf
 	realFatalf := fatalf
 	fatalf = func(format string, v ...interface{}) {
-		errorMessage := fmt.Sprintf(format, v)
+		errorMessage := fmt.Sprintf(format, v...)
 		// We replace os.Exit() with panic() because it too exits execution at the right point,
 		// but the GoConvey test framework can detect the latter only.
 		panic(errorMessage)
