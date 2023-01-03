@@ -210,7 +210,7 @@ func submitBulkToES(err error, c eshttp.Client, bulk []byte, companyNumbers []by
 
 	var bulkRes esBulkResponse
 	if err := unmarshal(b, &bulkRes); err != nil {
-		fatalf("error unmarshaling json: [%s] actual response: [%s]", err, b)
+		fatalf("error unmarshalling json: [%s] actual response: [%s]", err, b)
 	}
 
 	if bulkRes.Errors {

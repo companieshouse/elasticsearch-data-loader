@@ -278,7 +278,7 @@ func TestSubmitBulkToES(t *testing.T) {
 			submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
 		},
 			ShouldPanicWith,
-			"error unmarshaling json: [json: cannot unmarshal Test generated error into Go "+
+			"error unmarshalling json: [json: cannot unmarshal Test generated error into Go "+
 				"struct field struct.field of type string] actual response: [bulk]")
 
 	})
