@@ -34,32 +34,38 @@ type Write struct {
 	ake *os.File
 }
 
+// Function variables to facilitate testing.
+var (
+	openFile = os.OpenFile
+	fatalf   = log.Fatalf
+)
+
 // NewWriter returns a concrete implementation of the Writer interface
 func NewWriter() Writer {
 
-	postErrorFile, err := os.OpenFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	postErrorFile, err := openFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf(errorOpeningFile, postRequestErrors)
+		fatalf(errorOpeningFile, postRequestErrors)
 	}
 
-	unexpectedResponseFile, err := os.OpenFile(unexpectedResponse, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	unexpectedResponseFile, err := openFile(unexpectedResponse, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf(errorOpeningFile, unexpectedResponse)
+		fatalf(errorOpeningFile, unexpectedResponse)
 	}
 
-	missingCompanyNameFile, err := os.OpenFile(missingCompanyName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	missingCompanyNameFile, err := openFile(missingCompanyName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf(errorOpeningFile, missingCompanyName)
+		fatalf(errorOpeningFile, missingCompanyName)
 	}
 
-	missingCompanyDataFile, err := os.OpenFile(missingCompanyData, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	missingCompanyDataFile, err := openFile(missingCompanyData, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf(errorOpeningFile, missingCompanyData)
+		fatalf(errorOpeningFile, missingCompanyData)
 	}
 
-	alphaKeyErrorsFile, err := os.OpenFile(alphaKeyErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	alphaKeyErrorsFile, err := openFile(alphaKeyErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf(errorOpeningFile, alphaKeyErrors)
+		fatalf(errorOpeningFile, alphaKeyErrors)
 	}
 
 	return &Write{
