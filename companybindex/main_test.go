@@ -260,6 +260,34 @@ func TestTransformMongoCompaniesToEsCompanies(t *testing.T) {
 
 func TestSubmitBulkToES(t *testing.T) {
 
+	Convey("Should report bulk submission success", t, func() {
+
+		unmarshalCalled := false
+		restoreJsonUnmarshal := mockJsonUnmarshal(&unmarshalCalled)
+		defer restoreJsonUnmarshal()
+
+		ctrl := gomock.NewController(t)
+		client := eshttp.NewMockClient(ctrl)
+
+		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
+			Return([]byte("bulk"), nil)
+
+		submissionFailed := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		So(submissionFailed, ShouldEqual, false)
+	})
+
+	Convey("Should report bulk submission failure", t, func() {
+
+		ctrl := gomock.NewController(t)
+		client := eshttp.NewMockClient(ctrl)
+
+		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
+			Return([]byte("bulk"), errors.New("Test generated error"))
+
+		submissionFailed := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		So(submissionFailed, ShouldEqual, true)
+	})
+
 	Convey("Should handle failure to unmarshal bulk response by exiting program", t, func() {
 
 		restoreJsonUnmarshal := stubJsonUnmarshalWithError()
