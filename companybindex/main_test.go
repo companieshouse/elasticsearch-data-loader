@@ -95,7 +95,7 @@ func TestGetAlphaKeys(t *testing.T) {
 
 	Convey("Should handle failure to unmarshal company names by exiting program", t, func() {
 
-		restoreJsonUnmarshal := stubJsonUnmarshal()
+		restoreJsonUnmarshal := stubJsonUnmarshalWithError()
 		defer restoreJsonUnmarshal()
 
 		restoreLogFatalf := stubLogFatalf()
@@ -262,7 +262,7 @@ func TestSubmitBulkToES(t *testing.T) {
 
 	Convey("Should handle failure to unmarshal bulk response by exiting program", t, func() {
 
-		restoreJsonUnmarshal := stubJsonUnmarshal()
+		restoreJsonUnmarshal := stubJsonUnmarshalWithError()
 		defer restoreJsonUnmarshal()
 
 		restoreLogFatalf := stubLogFatalf()
@@ -280,6 +280,28 @@ func TestSubmitBulkToES(t *testing.T) {
 			ShouldPanicWith,
 			"error unmarshalling json: [json: cannot unmarshal Test generated error into Go "+
 				"struct field struct.field of type string] actual response: [bulk]")
+
+	})
+
+	Convey("Should handle failure to create elasticsearch document by exiting program", t, func() {
+
+		restoreJsonUnmarshal := stubJsonUnmarshalWithEsDocumentCreationResponseError()
+		defer restoreJsonUnmarshal()
+
+		restoreLogFatalf := stubLogFatalf()
+		defer restoreLogFatalf()
+
+		ctrl := gomock.NewController(t)
+		client := eshttp.NewMockClient(ctrl)
+
+		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
+			Return([]byte("bulk"), nil)
+
+		So(func() {
+			submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		},
+			ShouldPanicWith,
+			"error inserting doc: Test generated error")
 
 	})
 }
@@ -321,7 +343,7 @@ func mockJsonUnmarshal(unmarshalCalled *bool) func() {
 	return func() { unmarshal = realUnmarshal }
 }
 
-func stubJsonUnmarshal() func() {
+func stubJsonUnmarshalWithError() func() {
 	// Stub out json.Unmarshal
 	realUnmarshal := unmarshal
 	unmarshal = func(data []byte, v interface{}) error {
@@ -332,6 +354,23 @@ func stubJsonUnmarshal() func() {
 			Struct: "struct",
 			Field:  "field",
 		}
+	}
+	// Return function to restore json.Unmarshal
+	return func() { unmarshal = realUnmarshal }
+}
+
+func stubJsonUnmarshalWithEsDocumentCreationResponseError() func() {
+	// Stub out json.Unmarshal
+	realUnmarshal := unmarshal
+	unmarshal = func(data []byte, v interface{}) error {
+		bulkResponse := v.(*esBulkResponse)
+		bulkResponse.Errors = true
+		bulkResponse.Items = make([]esBulkItemResponse, 1)
+		bulkResponse.Items[0] =
+			map[string]esBulkItemResponseData{
+				"create": {Index: "Index", ID: "Id", Status: 500, Error: "Test generated error"},
+			}
+		return nil
 	}
 	// Return function to restore json.Unmarshal
 	return func() { unmarshal = realUnmarshal }
