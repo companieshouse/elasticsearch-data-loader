@@ -13,7 +13,7 @@ import (
 	"testing"
 )
 
-func TestGetAlphaKeys(t *testing.T) {
+func TestUnitGetAlphaKeys(t *testing.T) {
 
 	Convey("Should obtain keys", t, func() {
 
@@ -123,7 +123,7 @@ func TestGetAlphaKeys(t *testing.T) {
 
 }
 
-func TestTransformMongoCompaniesToEsCompanies(t *testing.T) {
+func TestUnitTransformMongoCompaniesToEsCompanies(t *testing.T) {
 
 	Convey("Should transform mongo companies to elasticsearch companies", t, func() {
 
@@ -258,7 +258,7 @@ func TestTransformMongoCompaniesToEsCompanies(t *testing.T) {
 	})
 }
 
-func TestSubmitBulkToES(t *testing.T) {
+func TestUnitSubmitBulkToES(t *testing.T) {
 
 	Convey("Should report bulk submission success", t, func() {
 

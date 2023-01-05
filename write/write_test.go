@@ -19,7 +19,7 @@ var temporaryFileIndexes = map[string]int{
 	alphaKeyErrors:     4,
 }
 
-func TestNewWriter(t *testing.T) {
+func TestUnitNewWriter(t *testing.T) {
 
 	testNewWriterFileOpeningFailure(t, postRequestErrors)
 	testNewWriterFileOpeningFailure(t, unexpectedResponse)
@@ -29,7 +29,7 @@ func TestNewWriter(t *testing.T) {
 
 }
 
-func TestClose(t *testing.T) {
+func TestUnitClose(t *testing.T) {
 
 	testCloseFileClosingFailure(t, postRequestErrors)
 	testCloseFileClosingFailure(t, unexpectedResponse)
