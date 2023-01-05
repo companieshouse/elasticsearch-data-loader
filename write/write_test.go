@@ -10,9 +10,19 @@ import (
 
 func TestNewWriter(t *testing.T) {
 
-	Convey("Should handle failure to open postRequestErrors file by exiting program", t, func() {
+	testNewWriterFileOpeningFailure(t, postRequestErrors)
+	testNewWriterFileOpeningFailure(t, unexpectedResponse)
+	testNewWriterFileOpeningFailure(t, missingCompanyName)
+	testNewWriterFileOpeningFailure(t, missingCompanyData)
+	testNewWriterFileOpeningFailure(t, alphaKeyErrors)
 
-		restoreOpenFile := stubOpenFile(postRequestErrors)
+}
+
+func testNewWriterFileOpeningFailure(t *testing.T, failingFileName string) {
+
+	Convey("Should handle failure to open "+failingFileName+" file by exiting program", t, func() {
+
+		restoreOpenFile := stubOpenFile(failingFileName)
 		defer restoreOpenFile()
 
 		restoreLogFatalf := stubLogFatalf()
@@ -20,60 +30,9 @@ func TestNewWriter(t *testing.T) {
 
 		So(func() { NewWriter() },
 			ShouldPanicWith,
-			"error opening [errors/postRequestErrors.txt] file")
+			"error opening ["+failingFileName+"] file")
 	})
 
-	Convey("Should handle failure to open unexpectedResponse file by exiting program", t, func() {
-
-		restoreOpenFile := stubOpenFile(unexpectedResponse)
-		defer restoreOpenFile()
-
-		restoreLogFatalf := stubLogFatalf()
-		defer restoreLogFatalf()
-
-		So(func() { NewWriter() },
-			ShouldPanicWith,
-			"error opening [errors/unexpectedResponse.txt] file")
-	})
-
-	Convey("Should handle failure to open missingCompanyName file by exiting program", t, func() {
-
-		restoreOpenFile := stubOpenFile(missingCompanyName)
-		defer restoreOpenFile()
-
-		restoreLogFatalf := stubLogFatalf()
-		defer restoreLogFatalf()
-
-		So(func() { NewWriter() },
-			ShouldPanicWith,
-			"error opening [errors/missingCompanyName.txt] file")
-	})
-
-	Convey("Should handle failure to open missingCompanyData file by exiting program", t, func() {
-
-		restoreOpenFile := stubOpenFile(missingCompanyData)
-		defer restoreOpenFile()
-
-		restoreLogFatalf := stubLogFatalf()
-		defer restoreLogFatalf()
-
-		So(func() { NewWriter() },
-			ShouldPanicWith,
-			"error opening [errors/missingCompanyData.txt] file")
-	})
-
-	Convey("Should handle failure to open alphaKeyErrors file by exiting program", t, func() {
-
-		restoreOpenFile := stubOpenFile(alphaKeyErrors)
-		defer restoreOpenFile()
-
-		restoreLogFatalf := stubLogFatalf()
-		defer restoreLogFatalf()
-
-		So(func() { NewWriter() },
-			ShouldPanicWith,
-			"error opening [errors/alphaKeyErrors.txt] file")
-	})
 }
 
 func stubOpenFile(failingFileName string) func() {
