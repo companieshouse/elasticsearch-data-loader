@@ -36,8 +36,9 @@ type Write struct {
 
 // Function variables to facilitate testing.
 var (
-	openFile = os.OpenFile
-	fatalf   = log.Fatalf
+	openFile  = os.OpenFile
+	fatalf    = log.Fatalf
+	closeFile = _closeFile
 )
 
 // NewWriter returns a concrete implementation of the Writer interface
@@ -80,20 +81,20 @@ func NewWriter() Writer {
 // Close closes a Writer
 func (w *Write) Close() {
 
-	if err := w.pe.Close(); err != nil {
-		log.Fatalf(errorClosingFile, err)
+	if err := closeFile(w.pe); err != nil {
+		fatalf(errorClosingFile, err)
 	}
-	if err := w.ur.Close(); err != nil {
-		log.Fatalf(errorClosingFile, err)
+	if err := closeFile(w.ur); err != nil {
+		fatalf(errorClosingFile, err)
 	}
-	if err := w.mcn.Close(); err != nil {
-		log.Fatalf(errorClosingFile, err)
+	if err := closeFile(w.mcn); err != nil {
+		fatalf(errorClosingFile, err)
 	}
-	if err := w.mcd.Close(); err != nil {
-		log.Fatalf(errorClosingFile, err)
+	if err := closeFile(w.mcd); err != nil {
+		fatalf(errorClosingFile, err)
 	}
-	if err := w.ake.Close(); err != nil {
-		log.Fatalf(errorClosingFile, err)
+	if err := closeFile(w.ake); err != nil {
+		fatalf(errorClosingFile, err)
 	}
 }
 
@@ -127,4 +128,9 @@ func writeToFile(connection *os.File, fileName string, msg string) {
 	if err != nil {
 		log.Printf("error writing [%s] to file: [%s]", msg, fileName)
 	}
+}
+
+// _closeFile introduced to facilitate testing.
+func _closeFile(file *os.File) error {
+	return file.Close()
 }
