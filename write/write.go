@@ -38,7 +38,7 @@ type Write struct {
 var (
 	openFile  = os.OpenFile
 	fatalf    = log.Fatalf
-	closeFile = _closeFile
+	closeFile = delegateToFileClose
 )
 
 // NewWriter returns a concrete implementation of the Writer interface
@@ -130,7 +130,7 @@ func writeToFile(connection *os.File, fileName string, msg string) {
 	}
 }
 
-// _closeFile introduced to facilitate testing.
-func _closeFile(file *os.File) error {
+// delegateToFileClose introduced to facilitate testing.
+func delegateToFileClose(file *os.File) error {
 	return file.Close()
 }
