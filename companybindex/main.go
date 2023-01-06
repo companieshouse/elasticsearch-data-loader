@@ -48,6 +48,13 @@ var (
 	semaphore     = make(chan int, 5)
 )
 
+// Function variables to facilitate testing.
+var (
+	marshal   = json.Marshal
+	unmarshal = json.Unmarshal
+	fatalf    = log.Fatalf
+)
+
 // ---------------------------------------------------------------------------
 
 type esBulkResponse struct {
@@ -82,7 +89,7 @@ func main() {
 	f := format.NewFormatter()
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURL))
 	if err != nil {
-		log.Fatalf("error creating mongoDB session: %s", err)
+		fatalf("error creating mongoDB session: %s", err)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), mongoTimeout)
@@ -90,7 +97,7 @@ func main() {
 	defer func(client *mongo.Client, ctx context.Context) {
 		err := client.Disconnect(ctx)
 		if err != nil {
-			log.Fatalf("error disconnecting from client: %s", err)
+			fatalf("error disconnecting from client: %s", err)
 		}
 	}(client, ctx)
 
@@ -102,11 +109,23 @@ func main() {
 	defer cancel2()
 	cur, err := companyProfileCollection.Find(ctx2, bson.D{}, findOptions)
 	if err != nil {
-		log.Fatalf("error reading from collection: %s", err)
+		fatalf("error reading from collection: %s", err)
 	}
 
 	ctx3, cancel3 := context.WithCancel(context.Background())
 	defer cancel3()
+
+	sendCompaniesToES(cur, ctx3, err, w, f)
+
+	time.Sleep(5 * time.Second)
+	syncWaitGroup.Wait()
+
+	w.Close()
+
+	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
+}
+
+func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w write.Writer, f format.Formatter) {
 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
 		itx := 0
@@ -122,7 +141,7 @@ func main() {
 		}
 
 		if err := cur.Err(); err != nil {
-			log.Fatalf("error iterating the collection: %s", err)
+			fatalf("error iterating the collection: %s", err)
 		}
 
 		// No results read from iterator. Nothing more to do.
@@ -133,13 +152,6 @@ func main() {
 		// This will block if we've reached our concurrency limit (sem buffer size)
 		sendToES(&companies, itx, w, f)
 	}
-
-	time.Sleep(5 * time.Second)
-	syncWaitGroup.Wait()
-
-	w.Close()
-
-	log.Println("SUCCESSFULLY LOADED: company data to alpha_search index")
 }
 
 // ---------------------------------------------------------------------------
@@ -170,64 +182,100 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 		var bulk []byte
 		var companyNumbers []byte
 
-		companyNames := t.GetCompanyNames(companies, length)
-		compNamesBody, err := json.Marshal(companyNames)
-		if err != nil {
-			log.Fatalf("error marshal to json: %s", err)
-		}
+		err, alphaKeys := getAlphaKeys(t, companies, length, c)
 
-		keys, err := c.GetAlphaKeys(compNamesBody, alphakeyURL)
-		if err != nil {
-			log.Fatalf("error fetching alpha keys: %s", err)
-		}
+		bulk, companyNumbers, target =
+			transformMongoCompaniesToEsCompanies(
+				length,
+				t,
+				companies,
+				alphaKeys,
+				bulk,
+				companyNumbers,
+				target)
 
-		var alphaKeys []datastructures.AlphaKey
-		if err := json.Unmarshal(keys, &alphaKeys); err != nil {
-			log.Fatalf("error unmarshalling alphakey response for %s", compNamesBody)
-		}
-
-		i := 0
-		for i < length {
-			company := t.TransformMongoCompanyToEsCompany((*companies)[i], &alphaKeys[i])
-
-			if company != nil {
-				b, err := json.Marshal(company)
-				if err != nil {
-					log.Fatalf("error marshal to json: %s", err)
-				}
-
-				bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.ID+"\" } }\n")...)
-				bulk = append(bulk, b...)
-				bulk = append(bulk, []byte("\n")...)
-				companyNumbers = append(companyNumbers, []byte("\n"+company.ID+"")...)
-			} else {
-				skipChannel <- 1
-				target--
-			}
-
-			i++
-		}
-
-		b, err := c.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
-		if err != nil {
+		if submitBulkToES(err, c, bulk, companyNumbers) {
 			return
-		}
-
-		var bulkRes esBulkResponse
-		if err := json.Unmarshal(b, &bulkRes); err != nil {
-			log.Fatalf("error unmarshaling json: [%s] actual response: [%s]", err, b)
-		}
-
-		if bulkRes.Errors {
-			for _, r := range bulkRes.Items {
-				if r["create"].Status != 201 {
-					log.Fatalf("error inserting doc: %s", r["create"].Error)
-				}
-			}
 		}
 
 		insertChannel <- target
 	}()
+}
+
+func submitBulkToES(err error, c eshttp.Client, bulk []byte, companyNumbers []byte) bool {
+	b, err := c.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
+	if err != nil {
+		return true
+	}
+
+	var bulkRes esBulkResponse
+	if err := unmarshal(b, &bulkRes); err != nil {
+		fatalf("error unmarshalling json: [%s] actual response: [%s]", err, b)
+	}
+
+	if bulkRes.Errors {
+		for _, r := range bulkRes.Items {
+			if r["create"].Status != 201 {
+				fatalf("error inserting doc: %s", r["create"].Error)
+			}
+		}
+	}
+	return false
+}
+
+func getAlphaKeys(
+	t transform.Transformer,
+	companies *[]*datastructures.MongoCompany,
+	length int,
+	c eshttp.Client) (error, []datastructures.AlphaKey) {
+	companyNames := t.GetCompanyNames(companies, length)
+	compNamesBody, err := marshal(companyNames)
+	if err != nil {
+		fatalf("error marshal to json: %s", err)
+	}
+
+	keys, err := c.GetAlphaKeys(compNamesBody, alphakeyURL)
+	if err != nil {
+		fatalf("error fetching alpha keys: %s", err)
+	}
+
+	var alphaKeys []datastructures.AlphaKey
+	if err := unmarshal(keys, &alphaKeys); err != nil {
+		fatalf("error %v unmarshalling alphakey response for %s", err, compNamesBody)
+	}
+	return err, alphaKeys
+}
+
+func transformMongoCompaniesToEsCompanies(
+	length int,
+	t transform.Transformer,
+	companies *[]*datastructures.MongoCompany,
+	alphaKeys []datastructures.AlphaKey,
+	bulk []byte,
+	companyNumbers []byte,
+	target int) ([]byte, []byte, int) {
+	i := 0
+	for i < length {
+		company := t.TransformMongoCompanyToEsCompany((*companies)[i], &alphaKeys[i])
+
+		if company != nil {
+			b, err := marshal(company)
+			if err != nil {
+				fatalf("error marshal to json: %s", err)
+			}
+
+			bulk = append(bulk, []byte("{ \"create\": { \"_id\": \""+company.ID+"\" } }\n")...)
+			bulk = append(bulk, b...)
+			bulk = append(bulk, []byte("\n")...)
+			companyNumbers = append(companyNumbers, []byte("\n"+company.ID+"")...)
+		} else {
+			skipChannel <- 1
+			target--
+		}
+
+		i++
+	}
+	return bulk, companyNumbers, target
 }
 
 // ---------------------------------------------------------------------------

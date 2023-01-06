@@ -11,6 +11,8 @@ const (
 	missingCompanyName = "errors/missingCompanyName.txt"
 	missingCompanyData = "errors/missingCompanyData.txt"
 	alphaKeyErrors     = "errors/alphaKeyErrors.txt"
+	errorOpeningFile   = "error opening [%s] file"
+	errorClosingFile   = "error closing file: %s"
 )
 
 // Writer provides an interface by which to write error messages to log files
@@ -32,32 +34,39 @@ type Write struct {
 	ake *os.File
 }
 
+// Function variables to facilitate testing.
+var (
+	openFile  = os.OpenFile
+	fatalf    = log.Fatalf
+	closeFile = delegateToFileClose
+)
+
 // NewWriter returns a concrete implementation of the Writer interface
 func NewWriter() Writer {
 
-	postErrorFile, err := os.OpenFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	postErrorFile, err := openFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", postRequestErrors)
+		fatalf(errorOpeningFile, postRequestErrors)
 	}
 
-	unexpectedResponseFile, err := os.OpenFile(unexpectedResponse, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	unexpectedResponseFile, err := openFile(unexpectedResponse, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", unexpectedResponse)
+		fatalf(errorOpeningFile, unexpectedResponse)
 	}
 
-	missingCompanyNameFile, err := os.OpenFile(missingCompanyName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	missingCompanyNameFile, err := openFile(missingCompanyName, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", missingCompanyName)
+		fatalf(errorOpeningFile, missingCompanyName)
 	}
 
-	missingCompanyDataFile, err := os.OpenFile(missingCompanyData, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	missingCompanyDataFile, err := openFile(missingCompanyData, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", missingCompanyData)
+		fatalf(errorOpeningFile, missingCompanyData)
 	}
 
-	alphaKeyErrorsFile, err := os.OpenFile(alphaKeyErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
+	alphaKeyErrorsFile, err := openFile(alphaKeyErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatalf("error opening [%s] file", alphaKeyErrors)
+		fatalf(errorOpeningFile, alphaKeyErrors)
 	}
 
 	return &Write{
@@ -72,20 +81,20 @@ func NewWriter() Writer {
 // Close closes a Writer
 func (w *Write) Close() {
 
-	if err := w.pe.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+	if err := closeFile(w.pe); err != nil {
+		fatalf(errorClosingFile, err)
 	}
-	if err := w.ur.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+	if err := closeFile(w.ur); err != nil {
+		fatalf(errorClosingFile, err)
 	}
-	if err := w.mcn.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+	if err := closeFile(w.mcn); err != nil {
+		fatalf(errorClosingFile, err)
 	}
-	if err := w.mcd.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+	if err := closeFile(w.mcd); err != nil {
+		fatalf(errorClosingFile, err)
 	}
-	if err := w.ake.Close(); err != nil {
-		log.Fatalf("error closing file: %s", err)
+	if err := closeFile(w.ake); err != nil {
+		fatalf(errorClosingFile, err)
 	}
 }
 
@@ -119,4 +128,9 @@ func writeToFile(connection *os.File, fileName string, msg string) {
 	if err != nil {
 		log.Printf("error writing [%s] to file: [%s]", msg, fileName)
 	}
+}
+
+// delegateToFileClose introduced to facilitate testing.
+func delegateToFileClose(file *os.File) error {
+	return file.Close()
 }
