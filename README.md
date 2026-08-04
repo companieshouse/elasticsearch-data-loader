@@ -20,14 +20,16 @@ When the alpha key service is running then run the following command to drop the
 
 ## Examples 
 ```bash
-./run-elastic-search -s company -e http://enva.es.ch.gov.uk:9400 -i alpha_search -m chs-pp-mes-sl2.ch.gov.uk:27019 -u admin -p admin -a http://chs-alphakey-pp.internal.ch -c false
+./run-elastic-search.sh -s company -e http://enva.es.ch.gov.uk:9400 -i alpha_search -m chs-pp-mes-sl2.ch.gov.uk:27019 -u admin -p admin -a http://chs-alphakey-pp.internal.ch -c false
 ```
+
+To target OpenSearch instead of Elasticsearch, add `-t opensearch`.
 
 * Anything to be executed should be executed from the project root — ie this directory.
 
-* The script `run-elastic-search` sets up an index with the correct settings and mappings required for
+* The script `run-elastic-search.sh` sets up an index with the correct settings and mappings required for
 search using the config/all_scheme.json file. It then calls the relevant go scripts (companybindex) which will copy and transforms data from mongo db to ElasticSearch.
 
-* `run-elastic-search` will ask for several parameters, to view these use the help parameter `-h`
+* `run-elastic-search.sh` will ask for several parameters, to view these use the help parameter `-h`
 
 

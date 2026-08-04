@@ -32,6 +32,7 @@ var (
 	mongoDatabase   = "company_profile"
 	mongoCollection = "company_profile"
 	mongoSize       = 500
+	companyLimit    = 0
 )
 
 var (
@@ -79,6 +80,7 @@ func main() {
 	flag.StringVar(&mongoDatabase, "mongo-database", mongoDatabase, "mongoDB database")
 	flag.StringVar(&mongoCollection, "mongo-collection", mongoCollection, "mongoDB collection")
 	flag.IntVar(&mongoSize, "mongo-source-size", mongoSize, "mongo page size")
+	flag.IntVar(&companyLimit, "company-limit", companyLimit, "limit the number of companies to transfer (0 = no limit)")
 	flag.StringVar(&esDestURL, "es-dest-url", esDestURL, "elasticsearch destination URL")
 	flag.StringVar(&esDestIndex, "es-dest-index", esDestIndex, "elasticsearch destination index")
 	flag.StringVar(&esDestType, "es-dest-type", esDestType, "elasticsearch destination type")
@@ -126,10 +128,15 @@ func main() {
 }
 
 func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w write.Writer, f format.Formatter) {
+	totalProcessed := 0
 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
 		itx := 0
 		for ; itx < len(companies); itx++ {
+			// Check if we've reached the company limit
+			if companyLimit > 0 && totalProcessed >= companyLimit {
+				break
+			}
 			if !cur.Next(ctx3) {
 				break
 			}
@@ -138,6 +145,7 @@ func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w wri
 				log.Fatal(err)
 			}
 			companies[itx] = &result
+			totalProcessed++
 		}
 
 		if err := cur.Err(); err != nil {
@@ -151,6 +159,11 @@ func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w wri
 
 		// This will block if we've reached our concurrency limit (sem buffer size)
 		sendToES(&companies, itx, w, f)
+
+		// Check if we've reached the limit after sending this batch
+		if companyLimit > 0 && totalProcessed >= companyLimit {
+			break
+		}
 	}
 }
 
