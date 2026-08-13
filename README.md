@@ -23,7 +23,33 @@ When the alpha key service is running then run the following command to drop the
 ./run-elastic-search.sh -s company -e http://enva.es.ch.gov.uk:9400 -i alpha_search -m chs-pp-mes-sl2.ch.gov.uk:27019 -u admin -p admin -a http://chs-alphakey-pp.internal.ch -c false
 ```
 
-To target OpenSearch instead of Elasticsearch, add `-t opensearch`.
+## Docker / ECS
+
+`ecs-image-build/docker_start.sh` maps environment variables to loader flags:
+
+- `SEARCH` -> `-s` (default: `company`)
+- `INDEX` -> `-i` (required)
+- `ES_URL` -> `-e` (required)
+- `MONGO_URL` -> `-m` (required)
+- `ALPHAKEY_URL` -> `-a` (required)
+- `USERNAME` -> `-u` (optional, must be set with `PASSWORD`)
+- `PASSWORD` -> `-p` (optional, must be set with `USERNAME`)
+- `CREATE_MAPPING` -> `-c` (default: `false`, valid: `true|false`)
+- `COMPANY_LIMIT` -> `-l` (default: `0`)
+
+Example run:
+
+```bash
+docker run --rm \
+  -e SEARCH=company \
+  -e INDEX=alpha_search \
+  -e ES_URL=http://enva.es.ch.gov.uk:9400 \
+  -e MONGO_URL=chs-pp-mes-sl2.ch.gov.uk:27019 \
+  -e ALPHAKEY_URL=http://chs-alphakey-pp.internal.ch \
+  -e CREATE_MAPPING=false \
+  <your-image>:<tag>
+```
+
 
 * Anything to be executed should be executed from the project root — ie this directory.
 

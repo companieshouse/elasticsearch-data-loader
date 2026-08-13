@@ -6,11 +6,13 @@ import (
 )
 
 const (
+	errorDir          = "errors"
 	postRequestErrors  = "errors/postRequestErrors.txt"
 	unexpectedResponse = "errors/unexpectedResponse.txt"
 	missingCompanyName = "errors/missingCompanyName.txt"
 	missingCompanyData = "errors/missingCompanyData.txt"
 	alphaKeyErrors     = "errors/alphaKeyErrors.txt"
+	errorCreatingDir   = "error creating [%s] dir: %v"
 	errorOpeningFile   = "error opening [%s] file"
 	errorClosingFile   = "error closing file: %s"
 )
@@ -43,6 +45,9 @@ var (
 
 // NewWriter returns a concrete implementation of the Writer interface
 func NewWriter() Writer {
+	if err := os.MkdirAll(errorDir, 0755); err != nil {
+		fatalf(errorCreatingDir, errorDir, err)
+	}
 
 	postErrorFile, err := openFile(postRequestErrors, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0600)
 	if err != nil {

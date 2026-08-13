@@ -19,3 +19,5 @@ type MongoCompany struct {
 	ID   string     `bson:"_id"`
 	Data *MongoData `bson:"data"`
 }
+
+
