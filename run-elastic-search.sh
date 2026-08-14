@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-while getopts ":s:i:e:m:u:p:a:c:h" arg
+while getopts ":s:i:e:m:u:p:a:c:l:h" arg
 do
   case "$arg" in
     s)
@@ -25,7 +25,10 @@ do
       alphakey_url=$OPTARG   # 'http://chs-alphakey-pp.internal.ch'
     ;;
     c)
-      create_mapping=$OPTARG # 'true'
+      create_mapping=$OPTARG # 'true' or 'false'
+    ;;
+    l)
+      company_limit=$OPTARG  # limit number of companies to transfer
     ;;
     h)
       echo ""
@@ -46,6 +49,7 @@ do
       echo "        -p      password       Password for authentication.             admin"
       echo "        -a      alphakey_url   The alphakey service url.                http://chs-alphakey-pp.internal.ch"
       echo "        -c      create_mapping Boolean flag to create mapping or not.   true or false (defaults to false)"
+      echo "        -l      company_limit  Limit the number of companies to load.   100 (0 = no limit, defaults to 0)"
       echo ""
       exit 0
     ;;
@@ -60,6 +64,8 @@ index=${index:?ERROR: var not set [-i index]}
 es_url=${es_url:?ERROR: var not set [-e es_url]}
 mongo_url=${mongo_url:?ERROR: var not set [-m mongo_url]}
 alphakey_url=${alphakey_url:?ERROR: var not set [-a alphakey_url]}
+create_mapping=${create_mapping:-false}
+company_limit=${company_limit:-0}
 
 full_es_url="$es_url/"$index
 echo "            search: $search"
@@ -68,6 +74,7 @@ echo "      mongo db url: $mongo_url"
 echo " mongo db username: $username"
 echo " mongo db password: $password"
 echo "      alphakey url: $alphakey_url"
+echo "    company limit: $company_limit"
 
 # Check load type
 if [ $search = "company" ]
@@ -127,7 +134,7 @@ fi
 echo "bindex: $bindex"
 
 echo "-----------------------------------"
-echo "STEP 3: Start $type load"
-upload="$bindex -mongo-url=$full_mongo_url -es-dest-url=$es_url -es-dest-type=alpha_search -alphakey-url=$alphakey_url -es-dest-index=$index"
+echo "STEP 3: Start $search load"
+upload="$bindex -mongo-url=$full_mongo_url -es-dest-url=$es_url -es-dest-type=alpha_search -alphakey-url=$alphakey_url -es-dest-index=$index -company-limit=$company_limit"
 echo $upload
 exec $upload
