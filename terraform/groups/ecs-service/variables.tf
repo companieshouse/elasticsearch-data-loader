@@ -125,9 +125,9 @@ variable "use_set_environment_files" {
   description = "Toggle default global and shared  environment files"
 }
 
-variable "elasticsearch-data-loader_version" {
+variable "elasticsearch_data_loader_version" {
   type        = string
-  description = "The version of the primary-search-api container to run."
+  description = "The version of the elasticsearch-data-loader container to run."
 }
 
 variable "create_service_dashboard" {
