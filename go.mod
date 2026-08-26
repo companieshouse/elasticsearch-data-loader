@@ -1,6 +1,6 @@
 module github.com/companieshouse/elasticsearch-data-loader
 
-go 1.26
+go 1.26.6
 
 require (
 	github.com/golang/mock v1.4.4
