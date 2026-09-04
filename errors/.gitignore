@@ -1,0 +1,5 @@
+# Ignore all error log files, but keep the directory tracked with .gitkeep
+*
+!.gitkeep
+!.gitignore
+

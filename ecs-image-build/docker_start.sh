@@ -14,8 +14,6 @@ COMPANY_LIMIT="${COMPANY_LIMIT:-${company_limit:-0}}"
 
 RUN_SCRIPT="${RUN_SCRIPT:-/opt/run-elastic-search.sh}"
 
-# Ensure writable error log directory exists even if not present in git checkout.
-mkdir -p /opt/errors
 
 if [ ! -x "$RUN_SCRIPT" ]; then
   echo "ERROR: Cannot execute loader script: $RUN_SCRIPT"
