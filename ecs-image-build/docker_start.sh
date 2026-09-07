@@ -16,12 +16,23 @@ RUN_SCRIPT="${RUN_SCRIPT:-/opt/run-elastic-search.sh}"
 
 
 # Fallback for zipped build layouts where app files may live under /opt/build-*/.
+# Avoid relying on external tools (for example, find) that may not exist in slim images.
 if [ ! -x "$RUN_SCRIPT" ]; then
-  discovered_script="$(find /opt -maxdepth 4 -type f -name run-elastic-search.sh | head -n 1 || true)"
-  if [ -n "$discovered_script" ]; then
-    chmod +x "$discovered_script" 2>/dev/null || true
-    RUN_SCRIPT="$discovered_script"
-  fi
+  for candidate in \
+    /opt/run-elastic-search.sh \
+    /opt/*/run-elastic-search.sh \
+    /opt/*/*/run-elastic-search.sh \
+    /opt/*/*/*/run-elastic-search.sh \
+    /opt/*/*/*/*/run-elastic-search.sh
+  do
+    if [ -f "$candidate" ]; then
+      chmod +x "$candidate" 2>/dev/null || true
+      if [ -x "$candidate" ]; then
+        RUN_SCRIPT="$candidate"
+        break
+      fi
+    fi
+  done
 fi
 
 if [ ! -x "$RUN_SCRIPT" ]; then
