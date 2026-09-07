@@ -15,6 +15,15 @@ COMPANY_LIMIT="${COMPANY_LIMIT:-${company_limit:-0}}"
 RUN_SCRIPT="${RUN_SCRIPT:-/opt/run-elastic-search.sh}"
 
 
+# Fallback for zipped build layouts where app files may live under /opt/build-*/.
+if [ ! -x "$RUN_SCRIPT" ]; then
+  discovered_script="$(find /opt -maxdepth 4 -type f -name run-elastic-search.sh | head -n 1 || true)"
+  if [ -n "$discovered_script" ]; then
+    chmod +x "$discovered_script" 2>/dev/null || true
+    RUN_SCRIPT="$discovered_script"
+  fi
+fi
+
 if [ ! -x "$RUN_SCRIPT" ]; then
   echo "ERROR: Cannot execute loader script: $RUN_SCRIPT"
   exit 1
