@@ -83,4 +83,8 @@ fi
 echo "Starting loader for index '$INDEX' with search '$SEARCH'"
 echo "Using create_mapping=$CREATE_MAPPING company_limit=$COMPANY_LIMIT"
 
+# Run from the loader script directory so its relative file paths resolve.
+script_dir="$(dirname "$RUN_SCRIPT")"
+cd "$script_dir"
+
 exec "${cmd[@]}"
