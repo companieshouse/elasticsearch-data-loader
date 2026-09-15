@@ -1,5 +1,5 @@
 # elasticsearch-data-loader
-A tool that Loads data from MongoDB into ElasticSearch.
+A tool that Loads data from MongoDB into ElasticSearch
 
 ## Requirements
 ---------------
