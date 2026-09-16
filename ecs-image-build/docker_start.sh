@@ -87,4 +87,12 @@ echo "Using create_mapping=$CREATE_MAPPING company_limit=$COMPANY_LIMIT"
 script_dir="$(dirname "$RUN_SCRIPT")"
 cd "$script_dir"
 
-exec "${cmd[@]}"
+"${cmd[@]}"
+exit_code=$?
+
+if [ $exit_code -eq 0 ]; then
+  echo "Load completed successfully. Sleeping 5 minutes before exit..."
+  sleep 300
+fi
+
+exit $exit_code
