@@ -87,8 +87,9 @@ echo "Using create_mapping=$CREATE_MAPPING company_limit=$COMPANY_LIMIT"
 script_dir="$(dirname "$RUN_SCRIPT")"
 cd "$script_dir"
 
-"${cmd[@]}"
-exit_code=$?
+# Filter bulk JSON to file, keep status/error messages visible in CloudWatch
+"${cmd[@]}" 2>&1 | tee >(grep -v '^{' >&2) > /opt/errors/bulk_operations.log
+exit_code=${PIPESTATUS[0]}
 
 if [ $exit_code -eq 0 ]; then
   echo "Load completed successfully. Sleeping 5 minutes before exit..."
