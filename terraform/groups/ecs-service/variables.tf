@@ -28,9 +28,9 @@ variable "docker_registry" {
 # Service performance and scaling configs
 # ------------------------------------------------------------------------------
 variable "desired_task_count" {
-  type = number
+  type        = number
   description = "The desired ECS task count for this service"
-  default = 0 # defaulted low for dev environments, override for production
+  default     = 0 # defaulted low for dev environments, override for production
 }
 variable "min_task_count" {
   default     = 0
@@ -38,14 +38,14 @@ variable "min_task_count" {
   description = "The minimum number of tasks for this service."
 }
 variable "required_cpus" {
-  type = number
+  type        = number
   description = "The required cpu resource for this service. 1024 here is 1 vCPU"
-  default = 256 # defaulted low for dev environments, override for production
+  default     = 256 # defaulted low for dev environments, override for production
 }
 variable "required_memory" {
-  type = number
+  type        = number
   description = "The required memory for this service"
-  default = 512 # defaulted low for node service in dev environments, override for production
+  default     = 512 # defaulted low for node service in dev environments, override for production
 }
 
 variable "max_task_count" {
@@ -80,7 +80,7 @@ variable "service_scaledown_schedule" {
   # Typically used to stop all tasks in a service to save resource costs overnight.
   # E.g. a value of '55 19 * * ? *' would be Mon-Sun 7:55pm.  An empty string indicates that no schedule should be created.
 
-  default     = ""
+  default = ""
 }
 variable "service_scaleup_schedule" {
   type        = string
@@ -88,7 +88,7 @@ variable "service_scaleup_schedule" {
   # Typically used to start all tasks in a service after it has been shutdown overnight.
   # E.g. a value of '5 6 * * ? *' would be Mon-Sun 6:05am.  An empty string indicates that no schedule should be created.
 
-  default     = ""
+  default = ""
 }
 variable "service_autoscale_scale_in_cooldown" {
   default     = 300
@@ -135,3 +135,10 @@ variable "create_service_dashboard" {
   description = "Defines whether a CloudWatch dashboard is created for the default ECS service (true) or not (false)"
   type        = bool
 }
+
+variable "opensearch_domain_names" {
+  type        = list(string)
+  default     = ["alphabetical-search"]
+  description = "The names of the OpenSearch domains to which the ECS tasks need access."
+}
+  

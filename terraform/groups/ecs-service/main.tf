@@ -21,24 +21,25 @@ module "ecs-service" {
   source = "git@github.com:companieshouse/terraform-modules//aws/ecs/ecs-service?ref=1.0.334"
 
   # Environmental configuration
-  environment    = var.environment
-  aws_region     = var.aws_region
-  aws_profile    = var.aws_profile
-  vpc_id         = data.aws_vpc.vpc.id
-  ecs_cluster_id = data.aws_ecs_cluster.ecs_cluster.id
+  environment             = var.environment
+  aws_region              = var.aws_region
+  aws_profile             = var.aws_profile
+  vpc_id                  = data.aws_vpc.vpc.id
+  ecs_cluster_id          = data.aws_ecs_cluster.ecs_cluster.id
   task_execution_role_arn = data.aws_iam_role.ecs_cluster_iam_role.arn
-  batch_service = true
+  batch_service           = true
+  task_role_arn           = aws_iam_role.task_role.arn
 
   # Docker container details
-  docker_registry   = var.docker_registry
-  docker_repo       = local.docker_repo
-  container_version = var.elasticsearch_data_loader_version
-  container_port = local.container_port
+  docker_registry           = var.docker_registry
+  docker_repo               = local.docker_repo
+  container_version         = var.elasticsearch_data_loader_version
+  container_port            = local.container_port
   read_only_root_filesystem = false
 
   # Service configuration
   service_name = local.service_name
-  name_prefix = local.name_prefix
+  name_prefix  = local.name_prefix
 
   # Service performance and scaling configs
   desired_task_count                   = var.desired_task_count
@@ -54,18 +55,20 @@ module "ecs-service" {
   service_scaleup_schedule             = var.service_scaleup_schedule
   use_capacity_provider                = var.use_capacity_provider
   use_fargate                          = var.use_fargate
-  fargate_subnets = local.application_subnet_ids
+  fargate_subnets                      = local.application_subnet_ids
 
   # Cloudwatch
   cloudwatch_alarms_enabled = var.cloudwatch_alarms_enabled
 
   # Service environment variable and secret configs
-  task_environment         = local.task_environment
-  task_secrets             = local.task_secrets
-  app_environment_filename = local.app_environment_filename
+  task_environment          = local.task_environment
+  task_secrets              = local.task_secrets
+  app_environment_filename  = local.app_environment_filename
   use_set_environment_files = local.use_set_environment_files
 
   create_service_dashboard = var.create_service_dashboard
+
+  default_tags = local.default_tags
 }
 
 module "secrets" {
@@ -75,4 +78,17 @@ module "secrets" {
   environment = var.environment
   kms_key_id  = data.aws_kms_key.kms_key.id
   secrets     = nonsensitive(local.service_secrets)
+}
+
+module "iac_tags" {
+  source = "git@github.com:companieshouse/terraform-modules//aws/tagging/iac?ref=tags/1.0.420"
+
+  group           = "infrastructure"
+  source_code_url = "https://github.com/companieshouse/green.search.api.ch.gov.uk"
+}
+
+module "owner_tags" {
+  source = "git@github.com:companieshouse/terraform-modules//aws/tagging/owner?ref=tags/1.0.420"
+
+  platform_owner = "platform"
 }

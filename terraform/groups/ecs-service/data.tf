@@ -57,3 +57,31 @@ data "aws_ssm_parameter" "global_secret" {
 data "vault_generic_secret" "shared_s3" {
   path = "aws-accounts/shared-services/s3"
 }
+
+data "aws_opensearch_domain" "opensearch" {
+  for_each = toset(var.opensearch_domain_names)
+
+  domain_name = "${var.environment}-${each.value}"
+}
+
+data "aws_iam_policy_document" "task_assume" {
+  statement {
+    sid     = "AllowTaskAssumeRole"
+    effect  = "Allow"
+    actions = ["sts:AssumeRole"]
+
+    principals {
+      type        = "Service"
+      identifiers = ["ecs-tasks.amazonaws.com"]
+    }
+  }
+}
+
+data "aws_iam_policy_document" "task_policy" {
+  statement {
+    sid       = "AllowOpenSearchAccess"
+    effect    = "Allow"
+    actions   = ["es:ESHttpGet", "es:ESHttpPost", "es:ESHttpHead", "es:ESHttpPut", "es:ESHttpDelete"]
+    resources = [for domain in data.aws_opensearch_domain.opensearch : "${domain.arn}/*"]
+  }
+}
