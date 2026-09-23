@@ -23,7 +23,7 @@ type Requester interface {
 // Request provides a concrete implementation of the Requester interface
 type Request struct {
 	useAWSSignV4 bool
-	signer       *requestsigner.Signer
+	signer       interface{} // *requestsigner.Signer - type not exported, so use interface{}
 	httpClient   *http.Client
 }
 
@@ -31,7 +31,7 @@ type Request struct {
 func NewRequester() Requester {
 
 	useAWSSignV4 := os.Getenv("USE_AWS_SIGV4") == "true"
-	var signer *requestsigner.Signer
+	var signer interface{}
 	var httpClient *http.Client = &http.Client{}
 
 	// If SigV4 is enabled, create AWS signer
