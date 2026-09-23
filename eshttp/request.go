@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"reflect"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	requestsigner "github.com/opensearch-project/opensearch-go/v2/signer/awsv2"
@@ -79,10 +80,25 @@ func (req *Request) Post(body []byte, uri string) (*http.Response, error) {
 
 	// Sign the request with AWS SigV4 using OpenSearch signer
 	if req.signer != nil {
-		err = req.signer.SignHTTP(context.Background(), httpReq)
-		if err != nil {
-			log.Printf("warning: failed to sign request with SigV4: %v, sending unsigned request", err)
-			// Fall back to unsigned request on signing error
+		// Use reflection to call SignHTTP since Signer type isn't exported
+		signerValue := reflect.ValueOf(req.signer)
+		method := signerValue.MethodByName("SignHTTP")
+		if method.IsValid() {
+			// Call signer.SignHTTP(ctx, httpReq)
+			results := method.Call([]reflect.Value{
+				reflect.ValueOf(context.Background()),
+				reflect.ValueOf(httpReq),
+			})
+			if len(results) > 0 {
+				if errInterface := results[0].Interface(); errInterface != nil {
+					if err, ok := errInterface.(error); ok && err != nil {
+						log.Printf("warning: failed to sign request with SigV4: %v, sending unsigned request", err)
+						return req.httpClient.Do(httpReq)
+					}
+				}
+			}
+		} else {
+			log.Printf("warning: signer.SignHTTP method not found, sending unsigned request")
 			return req.httpClient.Do(httpReq)
 		}
 	}
