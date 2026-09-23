@@ -3,14 +3,15 @@ package eshttp
 import (
 	"bytes"
 	"context"
-	"io"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+	"strings"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
-	v4 "github.com/aws/aws-sdk-go-v2/aws/signer/v4"
+	"github.com/opensearch-project/opensearch-go/v2"
+	requestsigner "github.com/opensearch-project/opensearch-go/v2/signer/awsv2"
 )
 
 // OpenSearchSigningServiceName is the IAM action/service name prefix used by Amazon OpenSearch Service for SigV4 signing
@@ -25,37 +26,41 @@ type Requester interface {
 // Request provides a concrete implementation of the Requester interface
 type Request struct {
 	useAWSSignV4 bool
+	client       *opensearch.Client
 	httpClient   *http.Client
-	credentials  aws.Credentials
-	signer       *v4.Signer
-	region       string
 }
 
 // NewRequester returns a concrete implementation of the Requester interface
 func NewRequester() Requester {
 
 	useAWSSignV4 := os.Getenv("USE_AWS_SIGV4") == "true"
-	var credentials aws.Credentials
-	var signer *v4.Signer
-	region := "eu-west-2" // default region
+	var osClient *opensearch.Client
+	var httpClient *http.Client = &http.Client{}
 
-	// Only load AWS config if SigV4 is enabled
+	// If SigV4 is enabled, create OpenSearch client with AWS signer
 	if useAWSSignV4 {
-		cfg, err := config.LoadDefaultConfig(context.Background())
+		ctx := context.Background()
+		cfg, err := config.LoadDefaultConfig(ctx)
 		if err != nil {
 			log.Printf("warning: failed to load AWS config for SigV4: %v, falling back to unsigned requests", err)
 			useAWSSignV4 = false
 		} else {
-			// Get the credentials from the config
-			creds, err := cfg.Credentials.Retrieve(context.Background())
+			signer, err := requestsigner.NewSigner(cfg)
 			if err != nil {
-				log.Printf("warning: failed to retrieve AWS credentials: %v, falling back to unsigned requests", err)
+				log.Printf("warning: failed to create AWS SigV4 signer: %v, falling back to unsigned requests", err)
 				useAWSSignV4 = false
 			} else {
-				credentials = creds
-				signer = v4.NewSigner()
-				if cfg.Region != "" {
-					region = cfg.Region
+				// Extract endpoint from environment or use placeholder
+				// The actual endpoint URL will be provided per-request in the Post() method
+				osClient, err = opensearch.NewClient(opensearch.Config{
+					Addresses: []string{"https://placeholder"}, // Will be overridden per-request
+					Signer:    signer,
+				})
+				if err != nil {
+					log.Printf("warning: failed to create OpenSearch client: %v, falling back to unsigned requests", err)
+					useAWSSignV4 = false
+				} else {
+					log.Printf("info: AWS SigV4 signing enabled for OpenSearch requests")
 				}
 			}
 		}
@@ -63,15 +68,13 @@ func NewRequester() Requester {
 
 	return &Request{
 		useAWSSignV4: useAWSSignV4,
-		httpClient:   &http.Client{},
-		credentials:  credentials,
-		signer:       signer,
-		region:       region,
+		client:       osClient,
+		httpClient:   httpClient,
 	}
 }
 
 // Post performs a POST request, using a provided body, against a given uri
-// If USE_AWS_SIGV4 env var is set to "true", signs request with AWS SigV4
+// If USE_AWS_SIGV4 env var is set to "true", signs request with AWS SigV4 via OpenSearch client
 func (req *Request) Post(body []byte, uri string) (*http.Response, error) {
 
 	if !req.useAWSSignV4 {
@@ -79,7 +82,8 @@ func (req *Request) Post(body []byte, uri string) (*http.Response, error) {
 		return http.Post(uri, applicationJSON, bytes.NewReader(body))
 	}
 
-	// Create request for signing
+	// Use OpenSearch client's signing transport for SigV4-signed requests
+	// Create a new request that will be signed by the OpenSearch client's transport
 	httpReq, err := http.NewRequestWithContext(context.Background(), "POST", uri, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -87,15 +91,14 @@ func (req *Request) Post(body []byte, uri string) (*http.Response, error) {
 
 	httpReq.Header.Set("Content-Type", applicationJSON)
 
-	// Sign the request with AWS SigV4
-	// Service name is "es" for Elasticsearch/OpenSearch (Amazon OpenSearch Service)
-	err = req.signer.SignHTTP(context.Background(), req.credentials, httpReq, OpenSearchSigningServiceName, req.region, nil)
-	if err != nil {
-		log.Printf("error signing request with SigV4: %v", err)
-		return nil, err
+	// Use the OpenSearch client's HTTP transport which applies SigV4 signing
+	if req.client != nil && req.client.Transport != nil {
+		return req.client.Transport.RoundTrip(httpReq)
 	}
 
-	// Execute signed request
+	// Fallback to unsigned request if transport not available
+	log.Printf("warning: OpenSearch client transport not available, falling back to unsigned request")
 	return req.httpClient.Do(httpReq)
 }
+
 
