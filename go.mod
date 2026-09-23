@@ -4,7 +4,7 @@ go 1.26.6
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.24.0
-	github.com/aws/aws-sdk-go-v2/aws/signer/v4 v1.2.0
+	github.com/aws/aws-sdk-go-v2/aws/signer/v4 v4.0.0
 	github.com/aws/aws-sdk-go-v2/config v1.26.1
 	github.com/aws/smithy-go v1.19.0
 	github.com/golang/mock v1.4.4
