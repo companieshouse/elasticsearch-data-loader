@@ -11,6 +11,7 @@ USERNAME="${USERNAME:-${username:-}}"
 PASSWORD="${PASSWORD:-${password:-}}"
 CREATE_MAPPING="${CREATE_MAPPING:-${create_mapping:-false}}"
 COMPANY_LIMIT="${COMPANY_LIMIT:-${company_limit:-0}}"
+USE_AWS_SIGV4="${USE_AWS_SIGV4:-${use_aws_sigv4:-false}}"
 
 RUN_SCRIPT="${RUN_SCRIPT:-/opt/run-elastic-search.sh}"
 
@@ -87,8 +88,12 @@ echo "Using create_mapping=$CREATE_MAPPING company_limit=$COMPANY_LIMIT"
 script_dir="$(dirname "$RUN_SCRIPT")"
 cd "$script_dir"
 
-"${cmd[@]}"
-exit_code=$?
+# Export AWS SigV4 env var for HTTP client
+export USE_AWS_SIGV4
+
+# Filter bulk JSON to file, keep status/error messages visible in CloudWatch
+"${cmd[@]}" 2>&1 | tee >(grep -v '^{' >&2) > /opt/errors/bulk_operations.log
+exit_code=${PIPESTATUS[0]}
 
 if [ $exit_code -eq 0 ]; then
   echo "Load completed successfully. Sleeping 5 minutes before exit..."
