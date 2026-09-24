@@ -92,8 +92,7 @@ func (req *Request) Post(body []byte, uri string) (*http.Response, error) {
 			if len(results) > 0 {
 				if errInterface := results[0].Interface(); errInterface != nil {
 					if err, ok := errInterface.(error); ok && err != nil {
-						log.Printf("warning: failed to sign request with SigV4: %v, sending unsigned request", err)
-						return req.httpClient.Do(httpReq)
+return nil, err
 					}
 				}
 			}
