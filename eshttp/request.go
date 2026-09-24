@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"reflect"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	requestsigner "github.com/opensearch-project/opensearch-go/v2/signer/awsv2"
@@ -21,56 +20,60 @@ type Requester interface {
 	Post(body []byte, uri string) (*http.Response, error)
 }
 
-// Request provides a concrete implementation of the Requester interface
-type Request struct {
-	useAWSSignV4 bool
-	signer       interface{} // *requestsigner.Signer - type not exported, so use interface{}
-	httpClient   *http.Client
+// UnsignedRequest provides unsigned HTTP requests (used for alpha-key and other non-OpenSearch services)
+type UnsignedRequest struct {
+	httpClient *http.Client
 }
 
-// NewRequester returns a concrete implementation of the Requester interface
+// SignedRequest provides AWS SigV4-signed HTTP requests (used for OpenSearch only)
+type SignedRequest struct {
+	signer     *requestsigner.Signer
+	httpClient *http.Client
+}
+
+// NewRequester returns the appropriate Requester based on USE_AWS_SIGV4 env var
+// Returns UnsignedRequest for local/non-AWS environments
+// Returns SignedRequest for AWS OpenSearch environments
 func NewRequester() Requester {
-
 	useAWSSignV4 := os.Getenv("USE_AWS_SIGV4") == "true"
-	var signer interface{}
-	var httpClient *http.Client = &http.Client{}
 
-	// If SigV4 is enabled, create AWS signer
-	if useAWSSignV4 {
-		ctx := context.Background()
-		cfg, err := config.LoadDefaultConfig(ctx)
-		if err != nil {
-			log.Printf("warning: failed to load AWS config for SigV4: %v, falling back to unsigned requests", err)
-			useAWSSignV4 = false
-		} else {
-			var signErr error
-			signer, signErr = requestsigner.NewSigner(cfg)
-			if signErr != nil {
-				log.Printf("warning: failed to create AWS SigV4 signer: %v, falling back to unsigned requests", signErr)
-				useAWSSignV4 = false
-			} else {
-				log.Printf("info: AWS SigV4 signing enabled for OpenSearch requests")
-			}
+	if !useAWSSignV4 {
+		return &UnsignedRequest{
+			httpClient: &http.Client{},
 		}
 	}
 
-	return &Request{
-		useAWSSignV4: useAWSSignV4,
-		signer:       signer,
-		httpClient:   httpClient,
+	ctx := context.Background()
+	cfg, err := config.LoadDefaultConfig(ctx)
+	if err != nil {
+		log.Printf("warning: failed to load AWS config for SigV4: %v, falling back to unsigned requests", err)
+		return &UnsignedRequest{
+			httpClient: &http.Client{},
+		}
+	}
+
+	signer, err := requestsigner.NewSigner(cfg)
+	if err != nil {
+		log.Printf("warning: failed to create AWS SigV4 signer: %v, falling back to unsigned requests", err)
+		return &UnsignedRequest{
+			httpClient: &http.Client{},
+		}
+	}
+
+	log.Printf("info: AWS SigV4 signing enabled for OpenSearch requests")
+	return &SignedRequest{
+		signer:     signer,
+		httpClient: &http.Client{},
 	}
 }
 
-// Post performs a POST request, using a provided body, against a given uri
-// If USE_AWS_SIGV4 env var is set to "true", signs request with AWS SigV4
-func (req *Request) Post(body []byte, uri string) (*http.Response, error) {
+// Post performs an unsigned POST request
+func (req *UnsignedRequest) Post(body []byte, uri string) (*http.Response, error) {
+	return http.Post(uri, applicationJSON, bytes.NewReader(body))
+}
 
-	if !req.useAWSSignV4 {
-		// Standard unsigned request for local/non-AWS environments
-		return http.Post(uri, applicationJSON, bytes.NewReader(body))
-	}
-
-	// Create request to be signed
+// Post performs a SigV4-signed POST request for OpenSearch
+func (req *SignedRequest) Post(body []byte, uri string) (*http.Response, error) {
 	httpReq, err := http.NewRequestWithContext(context.Background(), "POST", uri, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -78,31 +81,14 @@ func (req *Request) Post(body []byte, uri string) (*http.Response, error) {
 
 	httpReq.Header.Set("Content-Type", applicationJSON)
 
-	// Sign the request with AWS SigV4 using OpenSearch signer
-	if req.signer != nil {
-		// Use reflection to call SignHTTP since Signer type isn't exported
-		signerValue := reflect.ValueOf(req.signer)
-		method := signerValue.MethodByName("SignHTTP")
-		if method.IsValid() {
-			// Call signer.SignHTTP(ctx, httpReq)
-			results := method.Call([]reflect.Value{
-				reflect.ValueOf(context.Background()),
-				reflect.ValueOf(httpReq),
-			})
-			if len(results) > 0 {
-				if errInterface := results[0].Interface(); errInterface != nil {
-					if err, ok := errInterface.(error); ok && err != nil {
-return nil, err
-					}
-				}
-			}
-		} else {
-			log.Printf("warning: signer.SignHTTP method not found, sending unsigned request")
-			return req.httpClient.Do(httpReq)
-		}
+	// Use the OpenSearch client directly with the signer
+	// This leverages the official OpenSearch Go client's signing mechanism
+	err = req.signer.SignRequest(context.Background(), httpReq)
+	if err != nil {
+		log.Printf("error signing request with SigV4: %v", err)
+		return nil, err
 	}
 
-	// Execute signed request
 	return req.httpClient.Do(httpReq)
 }
 
