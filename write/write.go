@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	errorDir          = "errors"
+	errorDir           = "errors"
 	postRequestErrors  = "errors/postRequestErrors.txt"
 	unexpectedResponse = "errors/unexpectedResponse.txt"
 	missingCompanyName = "errors/missingCompanyName.txt"
