@@ -79,6 +79,10 @@ func (req *UnsignedRequest) Post(body []byte, uri string) (*http.Response, error
 
 // Post performs a SigV4-signed POST request for OpenSearch
 func (req *SignedRequest) Post(body []byte, uri string) (*http.Response, error) {
+	if req.client == nil {
+		return nil, errors.New("OpenSearch client not available")
+	}
+
 	httpReq, err := http.NewRequestWithContext(context.Background(), "POST", uri, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
@@ -94,5 +98,3 @@ func (req *SignedRequest) Post(body []byte, uri string) (*http.Response, error) 
 
 	return transport.Perform(httpReq)
 }
-
-
