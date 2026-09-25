@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func TestUnsignedRequest_Post(t *testing.T) {
+func TestUnitUnsignedRequest_Post(t *testing.T) {
 	// Create a test server that expects unsigned requests
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Verify Content-Type is set
@@ -38,7 +38,7 @@ func TestUnsignedRequest_Post(t *testing.T) {
 	}
 }
 
-func TestNewRequester_Unsigned(t *testing.T) {
+func TestUnitNewRequester_Unsigned(t *testing.T) {
 	// Ensure USE_AWS_SIGV4 is not set
 	os.Unsetenv("USE_AWS_SIGV4")
 
@@ -50,7 +50,7 @@ func TestNewRequester_Unsigned(t *testing.T) {
 	}
 }
 
-func TestNewRequester_SignedEnabled(t *testing.T) {
+func TestUnitNewRequester_SignedEnabled(t *testing.T) {
 	// Test that when USE_AWS_SIGV4 is set to true, it attempts to create SignedRequest
 	// This test doesn't require actual AWS credentials since createSignedRequester handles fallback
 	t.Setenv("USE_AWS_SIGV4", "true")
@@ -66,7 +66,7 @@ func TestNewRequester_SignedEnabled(t *testing.T) {
 	}
 }
 
-func TestSignedRequest_PostWithValidTransport(t *testing.T) {
+func TestUnitSignedRequest_PostWithValidTransport(t *testing.T) {
 	// Create a test server that expects Authorization header (signed request)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// When SignedRequest properly signs, Authorization header should be present
@@ -97,7 +97,7 @@ func TestSignedRequest_PostWithValidTransport(t *testing.T) {
 	}
 }
 
-func TestSignedRequest_PostErrorHandling(t *testing.T) {
+func TestUnitSignedRequest_PostErrorHandling(t *testing.T) {
 	// Test that SignedRequest properly handles nil client error
 	requester := &SignedRequest{
 		client: nil, // Intentionally nil to test error handling
@@ -110,7 +110,7 @@ func TestSignedRequest_PostErrorHandling(t *testing.T) {
 	}
 }
 
-func TestCreateSignedRequester_HandlesAWSConfig(t *testing.T) {
+func TestUnitCreateSignedRequester_HandlesAWSConfig(t *testing.T) {
 	// This test verifies that createSignedRequester properly attempts to load AWS config
 	// It may return SignedRequest (if credentials available) or UnsignedRequest (on fallback)
 	// This is acceptable behavior for graceful degradation
@@ -125,7 +125,7 @@ func TestCreateSignedRequester_HandlesAWSConfig(t *testing.T) {
 	}
 }
 
-func TestNewRequester_SignedDisabled(t *testing.T) {
+func TestUnitNewRequester_SignedDisabled(t *testing.T) {
 	// Test that disabled signing returns UnsignedRequest
 	t.Setenv("USE_AWS_SIGV4", "false")
 
