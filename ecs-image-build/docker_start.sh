@@ -91,6 +91,9 @@ cd "$script_dir"
 # Export AWS SigV4 env var for HTTP client
 export USE_AWS_SIGV4
 
+# Ensure errors directory exists for log file
+mkdir -p /opt/errors
+
 # Filter bulk JSON to file, keep status/error messages visible in CloudWatch
 "${cmd[@]}" 2>&1 | tee >(grep -v '^{' >&2) > /opt/errors/bulk_operations.log
 exit_code=${PIPESTATUS[0]}
