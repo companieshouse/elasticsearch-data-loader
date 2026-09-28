@@ -19,16 +19,18 @@ type Client interface {
 
 // ClientImpl provides a concrete implementation of the Client interface
 type ClientImpl struct {
-	w write.Writer
-	r Requester
+	w                   write.Writer
+	signedRequester     Requester // For OpenSearch (may use SigV4 if enabled)
+	unsignedRequester   Requester // For AlphaKey (always unsigned)
 }
 
 // NewClient returns a concrete implementation of the Client interface
 func NewClient(writer write.Writer) Client {
 
 	return &ClientImpl{
-		w: writer,
-		r: NewRequester(),
+		w:                 writer,
+		signedRequester:   NewRequester(),      // Use configured requester (signed or unsigned based on USE_AWS_SIGV4)
+		unsignedRequester: NewUnsignedRequester(), // Always unsigned for AlphaKey
 	}
 }
 
@@ -36,8 +38,19 @@ func NewClient(writer write.Writer) Client {
 func NewClientWithRequester(writer write.Writer, requester Requester) Client {
 
 	return &ClientImpl{
-		w: writer,
-		r: requester,
+		w:                 writer,
+		signedRequester:   requester,
+		unsignedRequester: requester, // Use same requester for both in tests
+	}
+}
+
+// NewClientWithRequesters returns a concrete implementation of the Client interface with separate requesters
+func NewClientWithRequesters(writer write.Writer, signedReq Requester, unsignedReq Requester) Client {
+
+	return &ClientImpl{
+		w:                 writer,
+		signedRequester:   signedReq,
+		unsignedRequester: unsignedReq,
 	}
 }
 
@@ -46,7 +59,7 @@ func (c *ClientImpl) SubmitBulkToES(bulk []byte, companyNumbers []byte, esDestUR
 
 	uri := fmt.Sprintf("%s/%s/_bulk", esDestURL, esDestIndex)
 
-	r, err := c.r.Post(bulk, uri)
+	r, err := c.signedRequester.Post(bulk, uri)
 	if err != nil {
 		c.w.LogPostError(string(companyNumbers))
 		log.Printf("error posting request %s: data %s", err, string(bulk))
@@ -79,7 +92,7 @@ func (c *ClientImpl) GetAlphaKeys(companyNames []byte, alphaKeyURL string) ([]by
 
 	uri := fmt.Sprintf("%s/alphakey-bulk", alphaKeyURL)
 
-	r, err := c.r.Post(companyNames, uri)
+	r, err := c.unsignedRequester.Post(companyNames, uri)
 	if err != nil {
 		c.w.LogAlphaKeyErrors(string(companyNames))
 		log.Printf("error fetching alpha keys %s: data %s", err, string(companyNames))

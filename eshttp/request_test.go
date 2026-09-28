@@ -40,6 +40,21 @@ func TestUnitUnsignedRequest_Post(t *testing.T) {
 	}
 }
 
+func TestUnitNewUnsignedRequester(t *testing.T) {
+	// Test that NewUnsignedRequester always returns an unsigned requester
+	requester := NewUnsignedRequester()
+
+	if _, ok := requester.(*UnsignedRequest); !ok {
+		t.Errorf("expected UnsignedRequest, got %T", requester)
+	}
+
+	// Verify the requester has an http client
+	unsignedReq, _ := requester.(*UnsignedRequest)
+	if unsignedReq.httpClient == nil {
+		t.Error("expected httpClient to be initialized")
+	}
+}
+
 func TestUnitNewRequester_Unsigned(t *testing.T) {
 	// Ensure USE_AWS_SIGV4 is not set
 	os.Unsetenv("USE_AWS_SIGV4")

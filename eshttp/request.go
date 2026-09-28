@@ -43,6 +43,13 @@ func NewRequester() Requester {
 	return createSignedRequester()
 }
 
+// NewUnsignedRequester always returns an unsigned requester for services that should never be signed
+func NewUnsignedRequester() Requester {
+	return &UnsignedRequest{
+		httpClient: &http.Client{},
+	}
+}
+
 // createSignedRequester creates a SignedRequest or falls back to UnsignedRequest on error
 func createSignedRequester() Requester {
 	ctx := context.Background()
