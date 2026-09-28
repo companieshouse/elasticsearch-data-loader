@@ -1,0 +1,427 @@
+
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>eshttp: Go Coverage Report</title>
+		<style>
+			body {
+				background: black;
+				color: rgb(80, 80, 80);
+			}
+			body, pre, #legend span {
+				font-family: Menlo, monospace;
+				font-weight: bold;
+			}
+			#topbar {
+				background: black;
+				position: fixed;
+				top: 0; left: 0; right: 0;
+				height: 42px;
+				border-bottom: 1px solid rgb(80, 80, 80);
+			}
+			#content {
+				margin-top: 50px;
+			}
+			#nav, #legend {
+				float: left;
+				margin-left: 10px;
+			}
+			#legend {
+				margin-top: 12px;
+			}
+			#nav {
+				margin-top: 10px;
+			}
+			#legend span {
+				margin: 0 5px;
+			}
+			.cov0 { color: rgb(192, 0, 0) }
+.cov1 { color: rgb(128, 128, 128) }
+.cov2 { color: rgb(116, 140, 131) }
+.cov3 { color: rgb(104, 152, 134) }
+.cov4 { color: rgb(92, 164, 137) }
+.cov5 { color: rgb(80, 176, 140) }
+.cov6 { color: rgb(68, 188, 143) }
+.cov7 { color: rgb(56, 200, 146) }
+.cov8 { color: rgb(44, 212, 149) }
+.cov9 { color: rgb(32, 224, 152) }
+.cov10 { color: rgb(20, 236, 155) }
+
+		</style>
+	</head>
+	<body>
+		<div id="topbar">
+			<div id="nav">
+				<select id="files">
+				
+				<option value="file0">github.com/companieshouse/elasticsearch-data-loader/eshttp/eshttp.go (85.3%)</option>
+				
+				<option value="file1">github.com/companieshouse/elasticsearch-data-loader/eshttp/mock_eshttp.go (0.0%)</option>
+				
+				<option value="file2">github.com/companieshouse/elasticsearch-data-loader/eshttp/mock_requester.go (100.0%)</option>
+				
+				<option value="file3">github.com/companieshouse/elasticsearch-data-loader/eshttp/request.go (80.0%)</option>
+				
+				</select>
+			</div>
+			<div id="legend">
+				<span>not tracked</span>
+			
+				<span class="cov0">not covered</span>
+				<span class="cov8">covered</span>
+			
+			</div>
+		</div>
+		<div id="content">
+		
+		<pre class="file" id="file0" style="display: none">package eshttp
+
+import (
+        "errors"
+        "fmt"
+        "io/ioutil"
+        "log"
+
+        "github.com/companieshouse/elasticsearch-data-loader/write"
+)
+
+const applicationJSON = "application/json"
+
+// Client provides an interface with which to communicate with Elastic Search by way of HTTP requests
+type Client interface {
+        SubmitBulkToES(bulk []byte, companyNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error)
+        GetAlphaKeys(companyNames []byte, alphaKeyURL string) ([]byte, error)
+}
+
+// ClientImpl provides a concrete implementation of the Client interface
+type ClientImpl struct {
+        w write.Writer
+        r Requester
+}
+
+// NewClient returns a concrete implementation of the Client interface
+func NewClient(writer write.Writer) Client <span class="cov0" title="0">{
+
+        return &amp;ClientImpl{
+                w: writer,
+                r: NewRequester(),
+        }
+}</span>
+
+// NewClientWithRequester returns a concrete implementation of the Client interface, taking a custom Requester
+func NewClientWithRequester(writer write.Writer, requester Requester) Client <span class="cov8" title="1">{
+
+        return &amp;ClientImpl{
+                w: writer,
+                r: requester,
+        }
+}</span>
+
+// SubmitBulkToES uses an HTTP post request to submit data to Elastic Search
+func (c *ClientImpl) SubmitBulkToES(bulk []byte, companyNumbers []byte, esDestURL string, esDestIndex string) ([]byte, error) <span class="cov8" title="1">{
+
+        uri := fmt.Sprintf("%s/%s/_bulk", esDestURL, esDestIndex)
+
+        r, err := c.r.Post(bulk, uri)
+        if err != nil </span><span class="cov8" title="1">{
+                c.w.LogPostError(string(companyNumbers))
+                log.Printf("error posting request %s: data %s", err, string(bulk))
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                err = r.Body.Close()
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Fatalf("failed to close response body after posting bulk to ES: %s", err)
+                }</span>
+        }()
+
+        <span class="cov8" title="1">b, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">if r.StatusCode &gt; 299 </span><span class="cov8" title="1">{
+                c.w.LogUnexpectedResponse(string(companyNumbers))
+                log.Printf("unexpected put response %s: data %s", r.Status, string(bulk))
+                return nil, errors.New("invalid response")
+        }</span>
+
+        <span class="cov8" title="1">return b, err</span>
+}
+
+// GetAlphaKeys performs a POST request to fetch alpha keys for a given set of company names
+func (c *ClientImpl) GetAlphaKeys(companyNames []byte, alphaKeyURL string) ([]byte, error) <span class="cov8" title="1">{
+
+        uri := fmt.Sprintf("%s/alphakey-bulk", alphaKeyURL)
+
+        r, err := c.r.Post(companyNames, uri)
+        if err != nil </span><span class="cov8" title="1">{
+                c.w.LogAlphaKeyErrors(string(companyNames))
+                log.Printf("error fetching alpha keys %s: data %s", err, string(companyNames))
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">defer func() </span><span class="cov8" title="1">{
+                err = r.Body.Close()
+                if err != nil </span><span class="cov0" title="0">{
+                        log.Fatalf("failed to close response body after fetching alpha keys: %s", err)
+                }</span>
+        }()
+
+        <span class="cov8" title="1">b, err := ioutil.ReadAll(r.Body)
+        if err != nil </span><span class="cov0" title="0">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">return b, err</span>
+}
+</pre>
+		
+		<pre class="file" id="file1" style="display: none">// Code generated by MockGen. DO NOT EDIT.
+// Source: ./eshttp/eshttp.go
+
+// Package eshttp is a generated GoMock package.
+package eshttp
+
+import (
+        reflect "reflect"
+
+        gomock "github.com/golang/mock/gomock"
+)
+
+// MockClient is a mock of Client interface.
+type MockClient struct {
+        ctrl     *gomock.Controller
+        recorder *MockClientMockRecorder
+}
+
+// MockClientMockRecorder is the mock recorder for MockClient.
+type MockClientMockRecorder struct {
+        mock *MockClient
+}
+
+// NewMockClient creates a new mock instance.
+func NewMockClient(ctrl *gomock.Controller) *MockClient <span class="cov0" title="0">{
+        mock := &amp;MockClient{ctrl: ctrl}
+        mock.recorder = &amp;MockClientMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockClient) EXPECT() *MockClientMockRecorder <span class="cov0" title="0">{
+        return m.recorder
+}</span>
+
+// GetAlphaKeys mocks base method.
+func (m *MockClient) GetAlphaKeys(companyNames []byte, alphaKeyURL string) ([]byte, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "GetAlphaKeys", companyNames, alphaKeyURL)
+        ret0, _ := ret[0].([]byte)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// GetAlphaKeys indicates an expected call of GetAlphaKeys.
+func (mr *MockClientMockRecorder) GetAlphaKeys(companyNames, alphaKeyURL interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAlphaKeys", reflect.TypeOf((*MockClient)(nil).GetAlphaKeys), companyNames, alphaKeyURL)
+}</span>
+
+// SubmitBulkToES mocks base method.
+func (m *MockClient) SubmitBulkToES(bulk, companyNumbers []byte, esDestURL, esDestIndex string) ([]byte, error) <span class="cov0" title="0">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "SubmitBulkToES", bulk, companyNumbers, esDestURL, esDestIndex)
+        ret0, _ := ret[0].([]byte)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// SubmitBulkToES indicates an expected call of SubmitBulkToES.
+func (mr *MockClientMockRecorder) SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex interface{}) *gomock.Call <span class="cov0" title="0">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitBulkToES", reflect.TypeOf((*MockClient)(nil).SubmitBulkToES), bulk, companyNumbers, esDestURL, esDestIndex)
+}</span>
+</pre>
+		
+		<pre class="file" id="file2" style="display: none">package eshttp
+
+import (
+        "net/http"
+        reflect "reflect"
+
+        gomock "github.com/golang/mock/gomock"
+)
+
+// MockRequester is a mock of Requester interface
+type MockRequester struct {
+        ctrl     *gomock.Controller
+        recorder *MockRequesterMockRecorder
+}
+
+// MockRequesterMockRecorder is the mock recorder for MockRequester
+type MockRequesterMockRecorder struct {
+        mock *MockRequester
+}
+
+// NewMockRequester creates a new mock instance
+func NewMockRequester(ctrl *gomock.Controller) *MockRequester <span class="cov8" title="1">{
+        mock := &amp;MockRequester{ctrl: ctrl}
+        mock.recorder = &amp;MockRequesterMockRecorder{mock}
+        return mock
+}</span>
+
+// EXPECT returns an object that allows the caller to indicate expected use
+func (m *MockRequester) EXPECT() *MockRequesterMockRecorder <span class="cov8" title="1">{
+        return m.recorder
+}</span>
+
+// Post mocks base method
+func (m *MockRequester) Post(arg0 []byte, arg1 string) (*http.Response, error) <span class="cov8" title="1">{
+        m.ctrl.T.Helper()
+        ret := m.ctrl.Call(m, "Post", arg0, arg1)
+        ret0, _ := ret[0].(*http.Response)
+        ret1, _ := ret[1].(error)
+        return ret0, ret1
+}</span>
+
+// Post indicates an expected call of Post
+func (mr *MockRequesterMockRecorder) Post(arg0 interface{}, arg1 interface{}) *gomock.Call <span class="cov8" title="1">{
+        mr.mock.ctrl.T.Helper()
+        return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Post", reflect.TypeOf((*MockRequester)(nil).Post), arg0, arg1)
+}</span>
+</pre>
+		
+		<pre class="file" id="file3" style="display: none">package eshttp
+
+import (
+        "bytes"
+        "context"
+        "errors"
+        "log"
+        "net/http"
+        "os"
+
+        "github.com/aws/aws-sdk-go-v2/config"
+        "github.com/opensearch-project/opensearch-go/v2"
+        requestsigner "github.com/opensearch-project/opensearch-go/v2/signer/awsv2"
+)
+
+// Requester provides an interface by which to execute HTTP requests
+type Requester interface {
+        Post(body []byte, uri string) (*http.Response, error)
+}
+
+// UnsignedRequest provides unsigned HTTP requests (used for alpha-key and other non-OpenSearch services)
+type UnsignedRequest struct {
+        httpClient *http.Client
+}
+
+// SignedRequest provides AWS SigV4-signed HTTP requests (used for OpenSearch only)
+type SignedRequest struct {
+        client *opensearch.Client
+}
+
+// NewRequester returns the appropriate Requester based on USE_AWS_SIGV4 env var
+// Returns UnsignedRequest for local/non-AWS environments
+// Returns SignedRequest for AWS OpenSearch environments
+func NewRequester() Requester <span class="cov8" title="1">{
+        useAWSSignV4 := os.Getenv("USE_AWS_SIGV4") == "true"
+
+        if !useAWSSignV4 </span><span class="cov8" title="1">{
+                return &amp;UnsignedRequest{
+                        httpClient: &amp;http.Client{},
+                }
+        }</span>
+
+        <span class="cov8" title="1">return createSignedRequester()</span>
+}
+
+// createSignedRequester creates a SignedRequest or falls back to UnsignedRequest on error
+func createSignedRequester() Requester <span class="cov8" title="1">{
+        ctx := context.Background()
+        cfg, err := config.LoadDefaultConfig(ctx)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("warning: failed to load AWS config for SigV4: %v, falling back to unsigned requests", err)
+                return &amp;UnsignedRequest{httpClient: &amp;http.Client{}}
+        }</span>
+
+        <span class="cov8" title="1">signer, err := requestsigner.NewSigner(cfg)
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("warning: failed to create AWS SigV4 signer: %v, falling back to unsigned requests", err)
+                return &amp;UnsignedRequest{httpClient: &amp;http.Client{}}
+        }</span>
+
+        // Note: client is only used to access the Transport for signing.
+        // The actual request execution still uses our custom Post method.
+        <span class="cov8" title="1">client, err := opensearch.NewClient(opensearch.Config{
+                Signer: signer,
+        })
+        if err != nil </span><span class="cov0" title="0">{
+                log.Printf("warning: failed to create OpenSearch client: %v, falling back to unsigned requests", err)
+                return &amp;UnsignedRequest{httpClient: &amp;http.Client{}}
+        }</span>
+
+        <span class="cov8" title="1">log.Printf("info: AWS SigV4 signing enabled for OpenSearch requests")
+        return &amp;SignedRequest{client: client}</span>
+}
+
+// Post performs an unsigned POST request
+func (req *UnsignedRequest) Post(body []byte, uri string) (*http.Response, error) <span class="cov8" title="1">{
+        return http.Post(uri, applicationJSON, bytes.NewReader(body))
+}</span>
+
+// Post performs a SigV4-signed POST request for OpenSearch
+func (req *SignedRequest) Post(body []byte, uri string) (*http.Response, error) <span class="cov8" title="1">{
+        if req.client == nil </span><span class="cov8" title="1">{
+                return nil, errors.New("OpenSearch client not available")
+        }</span>
+
+        <span class="cov8" title="1">httpReq, err := http.NewRequestWithContext(context.Background(), "POST", uri, bytes.NewReader(body))
+        if err != nil </span><span class="cov8" title="1">{
+                return nil, err
+        }</span>
+
+        <span class="cov8" title="1">httpReq.Header.Set("Content-Type", applicationJSON)
+
+        // Use the OpenSearch client's transport to sign and execute the request
+        transport := req.client.Transport
+        if transport == nil </span><span class="cov8" title="1">{
+                return nil, errors.New("OpenSearch client transport not available")
+        }</span>
+
+        <span class="cov8" title="1">return transport.Perform(httpReq)</span>
+}
+</pre>
+		
+		</div>
+	</body>
+	<script>
+	(function() {
+		var files = document.getElementById('files');
+		var visible;
+		files.addEventListener('change', onChange, false);
+		function select(part) {
+			if (visible)
+				visible.style.display = 'none';
+			visible = document.getElementById(part);
+			if (!visible)
+				return;
+			files.value = part;
+			visible.style.display = 'block';
+			location.hash = part;
+		}
+		function onChange() {
+			select(files.value);
+			window.scrollTo(0, 0);
+		}
+		if (location.hash != "") {
+			select(location.hash.substr(1));
+		}
+		if (!visible) {
+			select("file0");
+		}
+	})();
+	</script>
+</html>
