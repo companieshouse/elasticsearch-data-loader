@@ -94,11 +94,22 @@ type esBulkItemResponseData struct {
 
 // recreateIndex deletes the existing index and creates a new one with the mapping schema
 func recreateIndex(baseURL, indexName string) error {
+	requester := eshttp.NewRequester()
+	return recreateIndexWithRequester(baseURL, indexName, requester)
+}
+
+// recreateIndexWithRequester is the internal implementation that accepts a Requester for testing
+func recreateIndexWithRequester(baseURL, indexName string, requester eshttp.Requester) error {
 	indexURL := baseURL + "/" + indexName
 
-	// Create the appropriate requester (signed or unsigned based on USE_AWS_SIGV4)
-	requester := eshttp.NewRequester()
 	log.Printf("INFO: Index management using %T", requester)
+
+	// Step 0: Read the mapping schema first (before making any HTTP calls)
+	log.Printf("Reading index mapping schema")
+	mappingBytes, err := ioutil.ReadFile("./config/search_scheme.json")
+	if err != nil {
+		return fmt.Errorf("error reading mapping schema from ./config/search_scheme.json: %w", err)
+	}
 
 	// Step 1: Delete the index
 	log.Printf("Deleting index at %s", indexURL)
@@ -121,12 +132,6 @@ func recreateIndex(baseURL, indexName string) error {
 
 	// Step 3: Recreate with mapping
 	log.Printf("Creating index with mapping at %s", indexURL)
-
-	// Read the mapping schema
-	mappingBytes, err := ioutil.ReadFile("./config/search_scheme.json")
-	if err != nil {
-		return fmt.Errorf("error reading mapping schema from ./config/search_scheme.json: %w", err)
-	}
 
 	putReq, err := http.NewRequest(http.MethodPut, indexURL, bytes.NewReader(mappingBytes))
 	if err != nil {

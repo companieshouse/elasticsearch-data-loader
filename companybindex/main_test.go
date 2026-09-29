@@ -1,18 +1,22 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
+	"reflect"
+	"testing"
+
 	"github.com/companieshouse/elasticsearch-data-loader/datastructures"
 	"github.com/companieshouse/elasticsearch-data-loader/eshttp"
 	"github.com/companieshouse/elasticsearch-data-loader/transform"
 	"github.com/golang/mock/gomock"
 	. "github.com/smartystreets/goconvey/convey"
-	"os"
-	"reflect"
-	"testing"
 )
 
 // Mock MongoDB cursor for testing fillBatch
@@ -208,25 +212,200 @@ func TestUnitRecreateIndex(t *testing.T) {
 		tmpDir := t.TempDir()
 		os.Chdir(tmpDir)
 
-		err = recreateIndex("http://localhost:9200", "test-index")
+		ctrl := gomock.NewController(t)
+		mockReq := eshttp.NewMockRequester(ctrl)
+
+		// No expectations because Do() won't be called (file read fails first)
+
+		err = recreateIndexWithRequester("http://localhost:9200", "test-index", mockReq)
 
 		So(err, ShouldNotBeNil)
 		So(err.Error(), ShouldContainSubstring, "reading mapping schema")
 	})
 
-	Convey("Should attempt delete and create on valid path", t, func() {
+	Convey("Should successfully recreate index with mocked requester", t, func() {
 
-		// Move to a directory with the config file
+		// Create temp config directory with minimal mapping
 		cwd, err := os.Getwd()
 		So(err, ShouldBeNil)
 		defer os.Chdir(cwd)
 
-		// This test will try to access localhost:9200 which should fail gracefully
-		// It's primarily to ensure the function doesn't panic
-		err = recreateIndex("http://localhost:19999", "test-index")
+		tmpDir := t.TempDir()
+		configDir := tmpDir + "/config"
+		os.MkdirAll(configDir, 0755)
 
-		// Should have an error (connection refused) but should not panic
+		// Create minimal mapping file
+		mappingContent := []byte(`{"settings":{"number_of_shards":1}}`)
+		err = os.WriteFile(configDir+"/search_scheme.json", mappingContent, 0644)
+		So(err, ShouldBeNil)
+		os.Chdir(tmpDir)
+
+		ctrl := gomock.NewController(t)
+		mockReq := eshttp.NewMockRequester(ctrl)
+
+		// Mock successful DELETE response
+		deleteResp := &http.Response{
+			StatusCode: 200,
+			Body:       mockCloserBody(`{"acknowledged":true}`),
+		}
+
+		// Mock successful PUT response
+		putResp := &http.Response{
+			StatusCode: 200,
+			Body:       mockCloserBody(`{"acknowledged":true}`),
+		}
+
+		gomock.InOrder(
+			mockReq.EXPECT().Do(gomock.Any()).Return(deleteResp, nil),
+			mockReq.EXPECT().Do(gomock.Any()).Return(putResp, nil),
+		)
+
+		err = recreateIndexWithRequester("http://localhost:9200", "test-index", mockReq)
+		So(err, ShouldBeNil)
+	})
+
+	Convey("Should handle PUT returning error status", t, func() {
+		cwd, err := os.Getwd()
+		So(err, ShouldBeNil)
+		defer os.Chdir(cwd)
+
+		tmpDir := t.TempDir()
+		configDir := tmpDir + "/config"
+		os.MkdirAll(configDir, 0755)
+
+		mappingContent := []byte(`{"settings":{"number_of_shards":1}}`)
+		err = os.WriteFile(configDir+"/search_scheme.json", mappingContent, 0644)
+		So(err, ShouldBeNil)
+		os.Chdir(tmpDir)
+
+		ctrl := gomock.NewController(t)
+		mockReq := eshttp.NewMockRequester(ctrl)
+
+		deleteResp := &http.Response{
+			StatusCode: 200,
+			Body:       mockCloserBody(`{"acknowledged":true}`),
+		}
+
+		// PUT returns 400 error
+		putResp := &http.Response{
+			StatusCode: 400,
+			Body:       mockCloserBody(`{"error":"bad request"}`),
+		}
+
+		gomock.InOrder(
+			mockReq.EXPECT().Do(gomock.Any()).Return(deleteResp, nil),
+			mockReq.EXPECT().Do(gomock.Any()).Return(putResp, nil),
+		)
+
+		err = recreateIndexWithRequester("http://localhost:9200", "test-index", mockReq)
 		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "error creating index")
+		So(err.Error(), ShouldContainSubstring, "status 400")
+	})
+
+	Convey("Should handle DELETE returning error", t, func() {
+		cwd, err := os.Getwd()
+		So(err, ShouldBeNil)
+		defer os.Chdir(cwd)
+
+		tmpDir := t.TempDir()
+		configDir := tmpDir + "/config"
+		os.MkdirAll(configDir, 0755)
+
+		mappingContent := []byte(`{"settings":{"number_of_shards":1}}`)
+		err = os.WriteFile(configDir+"/search_scheme.json", mappingContent, 0644)
+		So(err, ShouldBeNil)
+		os.Chdir(tmpDir)
+
+		ctrl := gomock.NewController(t)
+		mockReq := eshttp.NewMockRequester(ctrl)
+
+		// DELETE fails with connection error
+		deleteErr := errors.New("connection refused")
+		mockReq.EXPECT().Do(gomock.Any()).Return(nil, deleteErr)
+
+		// PUT should still be attempted
+		putResp := &http.Response{
+			StatusCode: 200,
+			Body:       mockCloserBody(`{"acknowledged":true}`),
+		}
+		mockReq.EXPECT().Do(gomock.Any()).Return(putResp, nil)
+
+		// Should still succeed even if delete fails (it logs info message)
+		err = recreateIndexWithRequester("http://localhost:9200", "test-index", mockReq)
+		So(err, ShouldBeNil)
+	})
+
+	Convey("Should handle PUT returning error", t, func() {
+		cwd, err := os.Getwd()
+		So(err, ShouldBeNil)
+		defer os.Chdir(cwd)
+
+		tmpDir := t.TempDir()
+		configDir := tmpDir + "/config"
+		os.MkdirAll(configDir, 0755)
+
+		mappingContent := []byte(`{"settings":{"number_of_shards":1}}`)
+		err = os.WriteFile(configDir+"/search_scheme.json", mappingContent, 0644)
+		So(err, ShouldBeNil)
+		os.Chdir(tmpDir)
+
+		ctrl := gomock.NewController(t)
+		mockReq := eshttp.NewMockRequester(ctrl)
+
+		deleteResp := &http.Response{
+			StatusCode: 200,
+			Body:       mockCloserBody(`{"acknowledged":true}`),
+		}
+
+		// PUT fails with request error
+		putErr := errors.New("timeout")
+		gomock.InOrder(
+			mockReq.EXPECT().Do(gomock.Any()).Return(deleteResp, nil),
+			mockReq.EXPECT().Do(gomock.Any()).Return(nil, putErr),
+		)
+
+		err = recreateIndexWithRequester("http://localhost:9200", "test-index", mockReq)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "error creating index")
+	})
+
+	Convey("Should handle 500 error status on PUT", t, func() {
+		cwd, err := os.Getwd()
+		So(err, ShouldBeNil)
+		defer os.Chdir(cwd)
+
+		tmpDir := t.TempDir()
+		configDir := tmpDir + "/config"
+		os.MkdirAll(configDir, 0755)
+
+		mappingContent := []byte(`{"settings":{"number_of_shards":1}}`)
+		err = os.WriteFile(configDir+"/search_scheme.json", mappingContent, 0644)
+		So(err, ShouldBeNil)
+		os.Chdir(tmpDir)
+
+		ctrl := gomock.NewController(t)
+		mockReq := eshttp.NewMockRequester(ctrl)
+
+		deleteResp := &http.Response{
+			StatusCode: 200,
+			Body:       mockCloserBody(`{"acknowledged":true}`),
+		}
+
+		// PUT returns 500 error
+		putResp := &http.Response{
+			StatusCode: 500,
+			Body:       mockCloserBody(`{"error":"internal server error"}`),
+		}
+
+		gomock.InOrder(
+			mockReq.EXPECT().Do(gomock.Any()).Return(deleteResp, nil),
+			mockReq.EXPECT().Do(gomock.Any()).Return(putResp, nil),
+		)
+
+		err = recreateIndexWithRequester("http://localhost:9200", "test-index", mockReq)
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "status 500")
 	})
 }
 
@@ -636,4 +815,9 @@ func stubSkipChannel() func() {
 
 	// Return function to restore skipChannel
 	return func() { skipChannel = realSkipChannel }
+}
+
+// Helper function to create a mock http.Response Body
+func mockCloserBody(content string) io.ReadCloser {
+	return io.NopCloser(bytes.NewReader([]byte(content)))
 }
