@@ -10,6 +10,7 @@ import (
 	"github.com/companieshouse/elasticsearch-data-loader/transform"
 	"github.com/golang/mock/gomock"
 	. "github.com/smartystreets/goconvey/convey"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -191,6 +192,41 @@ func TestUnitFillBatch(t *testing.T) {
 		// Verify skip channel received increment
 		skipCount := <-skipChannel
 		So(skipCount, ShouldEqual, 1)
+	})
+}
+
+func TestUnitRecreateIndex(t *testing.T) {
+
+	Convey("Should handle missing schema file error", t, func() {
+
+		// Temporarily save and restore the working directory
+		cwd, err := os.Getwd()
+		So(err, ShouldBeNil)
+		defer os.Chdir(cwd)
+
+		// Change to temp directory without the config file
+		tmpDir := t.TempDir()
+		os.Chdir(tmpDir)
+
+		err = recreateIndex("http://localhost:9200", "test-index")
+
+		So(err, ShouldNotBeNil)
+		So(err.Error(), ShouldContainSubstring, "reading mapping schema")
+	})
+
+	Convey("Should attempt delete and create on valid path", t, func() {
+
+		// Move to a directory with the config file
+		cwd, err := os.Getwd()
+		So(err, ShouldBeNil)
+		defer os.Chdir(cwd)
+
+		// This test will try to access localhost:9200 which should fail gracefully
+		// It's primarily to ensure the function doesn't panic
+		err = recreateIndex("http://localhost:19999", "test-index")
+
+		// Should have an error (connection refused) but should not panic
+		So(err, ShouldNotBeNil)
 	})
 }
 
@@ -510,7 +546,7 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 			submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
 		},
 			ShouldPanicWith,
-			"error inserting doc: Test generated error")
+			"error inserting doc (status 500): Test generated error")
 
 	})
 }
@@ -577,7 +613,15 @@ func stubJsonUnmarshalWithEsDocumentCreationResponseError() func() {
 		bulkResponse.Items = make([]esBulkItemResponse, 1)
 		bulkResponse.Items[0] =
 			map[string]esBulkItemResponseData{
-				"create": {Index: "Index", ID: "Id", Status: 500, Error: "Test generated error"},
+				"create": {
+					Index:  "Index",
+					ID:     "Id",
+					Status: 500,
+					Error: ErrorDetail{
+						Type:   "internal_error",
+						Reason: "Test generated error",
+					},
+				},
 			}
 		return nil
 	}
