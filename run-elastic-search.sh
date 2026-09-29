@@ -138,12 +138,6 @@ echo "STEP 3: Start $search load"
 
 # Use array for proper shell argument passing, esp. for URLs with special characters
 declare -a cmd=("$bindex" "-mongo-url=$full_mongo_url" "-es-dest-url=$es_url" "-es-dest-type=alpha_search" "-alphakey-url=$alphakey_url" "-es-dest-index=$index" "-company-limit=$company_limit")
-echo "DEBUG: Full command array:"
-echo "${cmd[@]}"
-echo "DEBUG: es_url='$es_url'"
-echo "DEBUG: full_mongo_url='$full_mongo_url'"
-echo "DEBUG: alphakey_url='$alphakey_url'"
-echo "DEBUG: USE_AWS_SIGV4='${USE_AWS_SIGV4:-false}'"
 
 # Pass through USE_AWS_SIGV4 env var for AWS OpenSearch SigV4 signing (default: false for local)
 export USE_AWS_SIGV4="${USE_AWS_SIGV4:-false}"

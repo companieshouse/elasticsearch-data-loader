@@ -5,8 +5,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
-
-	"github.com/opensearch-project/opensearch-go/v2"
 )
 
 func TestUnitUnsignedRequest_Post(t *testing.T) {
@@ -83,7 +81,7 @@ func TestUnitNewRequester_SignedEnabled(t *testing.T) {
 	}
 }
 
-func TestUnitSignedRequest_PostWithValidTransport(t *testing.T) {
+func TestUnitSignedRequest_PostWithValidSigner(t *testing.T) {
 	// Create a test server that expects requests with Content-Type
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Content-Type") != applicationJSON {
@@ -93,17 +91,12 @@ func TestUnitSignedRequest_PostWithValidTransport(t *testing.T) {
 	}))
 	defer server.Close()
 
-	// Create a mock transport that records calls and returns a response
-	mockTransport := &mockTransport{
-		server: server,
-	}
-
-	// Create a SignedRequest with our mock transport
-	client := &opensearch.Client{}
-	client.Transport = mockTransport
+	// Create a mock signer that records calls
+	mockSigner := &mockSigner{}
 
 	requester := &SignedRequest{
-		client: client,
+		signer:     mockSigner,
+		httpClient: &http.Client{},
 	}
 
 	body := []byte(`{"test": "data"}`)
@@ -117,70 +110,62 @@ func TestUnitSignedRequest_PostWithValidTransport(t *testing.T) {
 		t.Errorf("expected status 200, got %d", resp.StatusCode)
 	}
 
-	if !mockTransport.performCalled {
-		t.Error("expected Perform to be called on transport")
+	if !mockSigner.signRequestCalled {
+		t.Error("expected SignRequest to be called on signer")
 	}
 }
 
-// mockTransport implements the OpenSearch transport interface for testing
-type mockTransport struct {
-	server         *httptest.Server
-	performCalled  bool
-	lastRequest    *http.Request
+// mockSigner implements the Signer interface for testing
+type mockSigner struct {
+	signRequestCalled bool
+	lastRequest       *http.Request
 }
 
-func (m *mockTransport) Perform(req *http.Request) (*http.Response, error) {
-	m.performCalled = true
+func (m *mockSigner) SignRequest(req *http.Request) error {
+	m.signRequestCalled = true
 	m.lastRequest = req
-
-	// Re-route the request to our test server
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	return resp, nil
+	// Add a marker header to show the request was signed
+	req.Header.Set("X-Signed", "true")
+	return nil
 }
 
-func TestUnitSignedRequest_PostErrorHandling_NilClient(t *testing.T) {
-	// Test that SignedRequest properly handles nil client error
+func TestUnitSignedRequest_PostErrorHandling_NilSigner(t *testing.T) {
+	// Test that SignedRequest properly handles nil signer error
 	requester := &SignedRequest{
-		client: nil, // Intentionally nil to test error handling
+		signer:     nil, // Intentionally nil to test error handling
+		httpClient: &http.Client{},
 	}
 
 	body := []byte(`{"test": "data"}`)
 	_, err := requester.Post(body, "http://localhost:9200")
-	if err == nil || err.Error() != "OpenSearch client not available" {
-		t.Errorf("expected 'OpenSearch client not available' error, got %v", err)
+	if err == nil || err.Error() != "AWS SigV4 signer not available" {
+		t.Errorf("expected 'AWS SigV4 signer not available' error, got %v", err)
 	}
 }
 
-func TestUnitSignedRequest_PostErrorHandling_NilTransport(t *testing.T) {
-	// Test that SignedRequest properly handles nil transport error
-	client := &opensearch.Client{}
-	client.Transport = nil
+func TestUnitSignedRequest_PostErrorHandling_NilHTTPClient(t *testing.T) {
+	// Test that SignedRequest properly handles nil http client error
+	mockSigner := &mockSigner{}
 
 	requester := &SignedRequest{
-		client: client,
+		signer:     mockSigner,
+		httpClient: nil,
 	}
 
 	body := []byte(`{"test": "data"}`)
 	_, err := requester.Post(body, "http://localhost:9200")
-	if err == nil || err.Error() != "OpenSearch client transport not available" {
-		t.Errorf("expected 'OpenSearch client transport not available' error, got %v", err)
+	if err == nil || err.Error() != "HTTP client not available" {
+		t.Errorf("expected 'HTTP client not available' error, got %v", err)
 	}
 }
 
 func TestUnitSignedRequest_PostErrorHandling_InvalidURL(t *testing.T) {
 	// Test error handling when URL is invalid
-	mockTransport := &mockTransport{}
-
-	client := &opensearch.Client{}
-	client.Transport = mockTransport
+	mockSigner := &mockSigner{}
 
 	requester := &SignedRequest{
-		client: client,
+		signer:     mockSigner,
+		httpClient: &http.Client{},
 	}
 
 	body := []byte(`{"test": "data"}`)
@@ -201,15 +186,11 @@ func TestUnitSignedRequest_PostSetsContentType(t *testing.T) {
 	}))
 	defer server.Close()
 
-	mockTransport := &mockTransport{
-		server: server,
-	}
-
-	client := &opensearch.Client{}
-	client.Transport = mockTransport
+	mockSigner := &mockSigner{}
 
 	requester := &SignedRequest{
-		client: client,
+		signer:     mockSigner,
+		httpClient: &http.Client{},
 	}
 
 	body := []byte(`{"test": "data"}`)
@@ -219,7 +200,7 @@ func TestUnitSignedRequest_PostSetsContentType(t *testing.T) {
 	}
 	defer resp.Body.Close()
 
-	if mockTransport.lastRequest.Header.Get("Content-Type") != applicationJSON {
+	if mockSigner.lastRequest.Header.Get("Content-Type") != applicationJSON {
 		t.Errorf("Content-Type not set correctly on request")
 	}
 }
