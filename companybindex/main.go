@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"sync"
 	"time"
 
@@ -29,9 +33,10 @@ type MongoCursor interface {
 const mongoTimeout = time.Duration(5) * time.Second
 
 var (
-	alphakeyURL = "http://chs-alphakey-pp.internal.ch"
-	esDestURL   = "http://localhost:9200"
-	mongoURL    = "mongodb://envb.mongo.ch.gov.uk:15107"
+	alphakeyURL   = "http://chs-alphakey-pp.internal.ch"
+	esDestURL     = "http://localhost:9200"
+	mongoURL      = "mongodb://envb.mongo.ch.gov.uk:15107"
+	createMapping = false
 )
 
 var (
@@ -72,11 +77,81 @@ type esBulkResponse struct {
 
 type esBulkItemResponse map[string]esBulkItemResponseData
 
+// ErrorDetail represents the error object returned by OpenSearch/Elasticsearch
+type ErrorDetail struct {
+	Type   string `json:"type"`
+	Reason string `json:"reason"`
+}
+
 type esBulkItemResponseData struct {
-	Index  string `json:"_index"`
-	ID     string `json:"_id"`
-	Status int    `json:"status"`
-	Error  string `json:"error"`
+	Index  string      `json:"_index"`
+	ID     string      `json:"_id"`
+	Status int         `json:"status"`
+	Error  ErrorDetail `json:"error"`
+}
+
+// ---------------------------------------------------------------------------
+
+// recreateIndex deletes the existing index and creates a new one with the mapping schema
+func recreateIndex(baseURL, indexName string) error {
+	requester := eshttp.NewRequester()
+	return recreateIndexWithRequester(baseURL, indexName, requester)
+}
+
+// recreateIndexWithRequester is the internal implementation that accepts a Requester for testing
+func recreateIndexWithRequester(baseURL, indexName string, requester eshttp.Requester) error {
+	indexURL := baseURL + "/" + indexName
+
+	log.Printf("INFO: Index management using %T", requester)
+
+	// Step 0: Read the mapping schema first (before making any HTTP calls)
+	log.Printf("Reading index mapping schema")
+	mappingBytes, err := ioutil.ReadFile("./config/search_scheme.json")
+	if err != nil {
+		return fmt.Errorf("error reading mapping schema from ./config/search_scheme.json: %w", err)
+	}
+
+	// Step 1: Delete the index
+	log.Printf("Deleting index at %s", indexURL)
+	deleteReq, err := http.NewRequest(http.MethodDelete, indexURL, nil)
+	if err != nil {
+		return fmt.Errorf("error creating delete request: %w", err)
+	}
+
+	resp, err := requester.Do(deleteReq)
+	if err != nil {
+		log.Printf("Info: Delete request returned: %v (might be normal if index doesn't exist or requires auth)", err)
+	} else {
+		defer resp.Body.Close()
+		body, _ := ioutil.ReadAll(resp.Body)
+		log.Printf("Delete response status: %d, body: %s", resp.StatusCode, string(body))
+	}
+
+	// Step 2: Wait a moment for deletion to complete
+	time.Sleep(1 * time.Second)
+
+	// Step 3: Recreate with mapping
+	log.Printf("Creating index with mapping at %s", indexURL)
+
+	putReq, err := http.NewRequest(http.MethodPut, indexURL, bytes.NewReader(mappingBytes))
+	if err != nil {
+		return fmt.Errorf("error creating put request: %w", err)
+	}
+	putReq.Header.Set("Content-Type", "application/json")
+
+	resp, err = requester.Do(putReq)
+	if err != nil {
+		return fmt.Errorf("error creating index: %w", err)
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	if resp.StatusCode >= 400 {
+		return fmt.Errorf("error creating index (status %d): %s", resp.StatusCode, string(body))
+	}
+
+	log.Printf("Index created successfully")
+	return nil
 }
 
 // ---------------------------------------------------------------------------
@@ -91,10 +166,22 @@ func main() {
 	flag.StringVar(&esDestIndex, "es-dest-index", esDestIndex, "elasticsearch destination index")
 	flag.StringVar(&esDestType, "es-dest-type", esDestType, "elasticsearch destination type")
 	flag.StringVar(&alphakeyURL, "alphakey-url", alphakeyURL, "alphakey service url")
+	flag.BoolVar(&createMapping, "create-mapping", createMapping, "delete and recreate the index before loading (requires SigV4 for AWS OpenSearch)")
 	flag.Parse()
 
 	w := write.NewWriter()
 	f := format.NewFormatter()
+
+	// If create-mapping is true, delete and recreate the index
+	if createMapping {
+		log.Printf("INFO: Recreating index '%s' as requested", esDestIndex)
+		if err := recreateIndex(esDestURL, esDestIndex); err != nil {
+			// Log warning but continue - it might be a permission issue or the index might already be gone
+			log.Printf("WARNING: Failed to recreate index: %v", err)
+		}
+		log.Printf("INFO: Index recreation completed")
+	}
+
 	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURL))
 	if err != nil {
 		fatalf("error creating mongoDB session: %s", err)
@@ -247,7 +334,12 @@ func submitBulkToES(err error, c eshttp.Client, bulk []byte, companyNumbers []by
 	if bulkRes.Errors {
 		for _, r := range bulkRes.Items {
 			if r["create"].Status != 201 {
-				fatalf("error inserting doc: %s", r["create"].Error)
+				// Extract error reason from ErrorDetail
+				errorMsg := r["create"].Error.Reason
+				if errorMsg == "" {
+					errorMsg = r["create"].Error.Type
+				}
+				fatalf("error inserting doc (status %d): %s", r["create"].Status, errorMsg)
 			}
 		}
 	}

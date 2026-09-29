@@ -88,27 +88,16 @@ else
 fi
 
 echo "-----------------------------------"
-echo "STEP 1: Delete existing index if -c flag set to true"
-if [ $create_mapping = "true" ]
+echo "STEP 1: Index management (delete/recreate if -c flag set to true)"
+if [ "$create_mapping" = "true" ]
 then
-    echo "DELETING INDEX $full_es_url"
-    delete_index="curl -XDELETE $full_es_url"
-    echo $delete_index
-    delete_index_response=`$delete_index`
-    echo $delete_index_response
+    echo "Will delete and recreate index '$index' during data load"
 else
-    echo "NOT DELETING INDEX"
+    echo "Will NOT recreate index"
 fi
 
 echo "-----------------------------------"
-echo "STEP 2: Create index with new mapping if -c flag set to true"
-if [ $create_mapping = "true" ]
-then
-    echo "CREATING INDEX WITH NEW MAPPING $full_es_url"
-    curl -XPUT -H "Content-Type: application/json" $full_es_url -d@./config/$scheme
-else
-    echo "NOT CREATING INDEX WITH NEW MAPPING"
-fi
+echo "STEP 2: Prepare for data load"
 
 # Check for authentication fields and build full mongo url
 if [ -z "$username" ] && [ -z "$password" ]
@@ -134,10 +123,16 @@ fi
 echo "bindex: $bindex"
 
 echo "-----------------------------------"
-echo "STEP 3: Start $search load"
+echo "STEP 3: Start data load"
 
 # Use array for proper shell argument passing, esp. for URLs with special characters
 declare -a cmd=("$bindex" "-mongo-url=$full_mongo_url" "-es-dest-url=$es_url" "-es-dest-type=alpha_search" "-alphakey-url=$alphakey_url" "-es-dest-index=$index" "-company-limit=$company_limit")
+
+# Add create-mapping flag if set (Go binary will handle index deletion/recreation)
+if [ "$create_mapping" = "true" ]
+then
+    cmd+=("-create-mapping")
+fi
 
 # Pass through USE_AWS_SIGV4 env var for AWS OpenSearch SigV4 signing (default: false for local)
 export USE_AWS_SIGV4="${USE_AWS_SIGV4:-false}"

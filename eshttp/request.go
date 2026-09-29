@@ -16,6 +16,7 @@ import (
 // Requester provides an interface by which to execute HTTP requests
 type Requester interface {
 	Post(body []byte, uri string) (*http.Response, error)
+	Do(httpReq *http.Request) (*http.Response, error)
 }
 
 // UnsignedRequest provides unsigned HTTP requests (used for alpha-key and other non-OpenSearch services)
@@ -78,6 +79,11 @@ func (req *UnsignedRequest) Post(body []byte, uri string) (*http.Response, error
 	return http.Post(uri, applicationJSON, bytes.NewReader(body))
 }
 
+// Do performs an unsigned HTTP request with arbitrary method
+func (req *UnsignedRequest) Do(httpReq *http.Request) (*http.Response, error) {
+	return req.httpClient.Do(httpReq)
+}
+
 // Post performs a SigV4-signed POST request for OpenSearch
 func (req *SignedRequest) Post(body []byte, uri string) (*http.Response, error) {
 	if req.signer == nil {
@@ -97,6 +103,26 @@ func (req *SignedRequest) Post(body []byte, uri string) (*http.Response, error) 
 
 	// Sign the request using AWS SigV4
 	err = req.signer.SignRequest(httpReq)
+	if err != nil {
+		return nil, err
+	}
+
+	// Execute the request using our http client
+	return req.httpClient.Do(httpReq)
+}
+
+// Do performs a SigV4-signed HTTP request for OpenSearch with arbitrary method
+func (req *SignedRequest) Do(httpReq *http.Request) (*http.Response, error) {
+	if req.signer == nil {
+		return nil, errors.New("AWS SigV4 signer not available")
+	}
+
+	if req.httpClient == nil {
+		return nil, errors.New("HTTP client not available")
+	}
+
+	// Sign the request using AWS SigV4
+	err := req.signer.SignRequest(httpReq)
 	if err != nil {
 		return nil, err
 	}

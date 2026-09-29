@@ -1,6 +1,8 @@
 package eshttp
 
 import (
+	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -228,5 +230,221 @@ func TestUnitNewRequester_SignedDisabled(t *testing.T) {
 
 	if _, ok := requester.(*UnsignedRequest); !ok {
 		t.Errorf("expected UnsignedRequest when USE_AWS_SIGV4=false, got %T", requester)
+	}
+}
+
+func TestUnitUnsignedRequest_Do(t *testing.T) {
+	// Create a test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify the method is preserved
+		if r.Method != http.MethodDelete {
+			t.Errorf("expected DELETE method, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	requester := &UnsignedRequest{
+		httpClient: &http.Client{},
+	}
+
+	// Create a DELETE request (arbitrary method)
+	req, err := http.NewRequest(http.MethodDelete, server.URL, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := requester.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestUnitUnsignedRequest_DoPUT(t *testing.T) {
+	// Test PUT method with body
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("expected PUT method, got %s", r.Method)
+		}
+		if r.Header.Get("Content-Type") != "application/json" {
+			t.Errorf("expected Content-Type application/json, got %s", r.Header.Get("Content-Type"))
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	requester := &UnsignedRequest{
+		httpClient: &http.Client{},
+	}
+
+	body := []byte(`{"test": "mapping"}`)
+	req, err := http.NewRequest(http.MethodPut, server.URL, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := requester.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("expected status 201, got %d", resp.StatusCode)
+	}
+}
+
+func TestUnitSignedRequest_DoWithMockSigner(t *testing.T) {
+	// Create a test server
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Verify that the request was signed (marker header set by mockSigner)
+		if r.Header.Get("X-Signed") != "true" {
+			t.Error("expected X-Signed header to be set by signer")
+		}
+		if r.Method != http.MethodDelete {
+			t.Errorf("expected DELETE method, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	mockSigner := &mockSigner{}
+	requester := &SignedRequest{
+		signer:     mockSigner,
+		httpClient: &http.Client{},
+	}
+
+	// Create a DELETE request
+	req, err := http.NewRequest(http.MethodDelete, server.URL, nil)
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := requester.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected status 200, got %d", resp.StatusCode)
+	}
+
+	if !mockSigner.signRequestCalled {
+		t.Error("expected SignRequest to be called")
+	}
+}
+
+func TestUnitSignedRequest_DoErrorHandling_NilSigner(t *testing.T) {
+	// Test that Do() properly handles nil signer error
+	requester := &SignedRequest{
+		signer:     nil,
+		httpClient: &http.Client{},
+	}
+
+	req, _ := http.NewRequest(http.MethodDelete, "http://localhost:9200/test", nil)
+
+	_, err := requester.Do(req)
+	if err == nil || err.Error() != "AWS SigV4 signer not available" {
+		t.Errorf("expected 'AWS SigV4 signer not available' error, got %v", err)
+	}
+}
+
+func TestUnitSignedRequest_DoErrorHandling_NilHTTPClient(t *testing.T) {
+	// Test that Do() properly handles nil http client error
+	mockSigner := &mockSigner{}
+	requester := &SignedRequest{
+		signer:     mockSigner,
+		httpClient: nil,
+	}
+
+	req, _ := http.NewRequest(http.MethodDelete, "http://localhost:9200/test", nil)
+
+	_, err := requester.Do(req)
+	if err == nil || err.Error() != "HTTP client not available" {
+		t.Errorf("expected 'HTTP client not available' error, got %v", err)
+	}
+}
+
+func TestUnitSignedRequest_DoPreservesPUTMethod(t *testing.T) {
+	// Test that Do() preserves PUT method with body
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPut {
+			t.Errorf("expected PUT method, got %s", r.Method)
+		}
+		w.WriteHeader(http.StatusCreated)
+	}))
+	defer server.Close()
+
+	mockSigner := &mockSigner{}
+	requester := &SignedRequest{
+		signer:     mockSigner,
+		httpClient: &http.Client{},
+	}
+
+	body := []byte(`{"settings":{"number_of_shards":1}}`)
+	req, err := http.NewRequest(http.MethodPut, server.URL, bytes.NewReader(body))
+	if err != nil {
+		t.Fatalf("failed to create request: %v", err)
+	}
+
+	resp, err := requester.Do(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("expected status 201, got %d", resp.StatusCode)
+	}
+}
+
+func TestUnitSignedRequest_DoSigningError(t *testing.T) {
+	// Test that Do() properly handles signing errors
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Create a signer that fails
+	failingSigner := &failingSigner{}
+	requester := &SignedRequest{
+		signer:     failingSigner,
+		httpClient: &http.Client{},
+	}
+
+	req, _ := http.NewRequest(http.MethodDelete, server.URL, nil)
+
+	_, err := requester.Do(req)
+	if err == nil || err.Error() != "signing error" {
+		t.Errorf("expected 'signing error' error, got %v", err)
+	}
+}
+
+// failingSigner is a mock signer that fails on SignRequest
+type failingSigner struct{}
+
+func (f *failingSigner) SignRequest(req *http.Request) error {
+	return errors.New("signing error")
+}
+
+func TestUnitSignedRequest_PostSigningError(t *testing.T) {
+	// Test that Post() properly handles signing errors
+	failingSigner := &failingSigner{}
+	requester := &SignedRequest{
+		signer:     failingSigner,
+		httpClient: &http.Client{},
+	}
+
+	body := []byte(`{"test": "data"}`)
+	_, err := requester.Post(body, "http://localhost:9200")
+	if err == nil || err.Error() != "signing error" {
+		t.Errorf("expected 'signing error' error, got %v", err)
 	}
 }

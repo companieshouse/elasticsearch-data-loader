@@ -44,3 +44,18 @@ func (mr *MockRequesterMockRecorder) Post(arg0 interface{}, arg1 interface{}) *g
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Post", reflect.TypeOf((*MockRequester)(nil).Post), arg0, arg1)
 }
+
+// Do mocks base method
+func (m *MockRequester) Do(arg0 *http.Request) (*http.Response, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Do", arg0)
+	ret0, _ := ret[0].(*http.Response)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Do indicates an expected call of Do
+func (mr *MockRequesterMockRecorder) Do(arg0 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Do", reflect.TypeOf((*MockRequester)(nil).Do), arg0)
+}
