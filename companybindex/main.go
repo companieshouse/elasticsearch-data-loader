@@ -132,7 +132,7 @@ func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w wri
 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
 		itx := 0
-		for ; itx < len(companies); itx++ {
+		for itx < len(companies) {
 			// Check if we've reached the company limit
 			if companyLimit > 0 && totalProcessed >= companyLimit {
 				break
@@ -142,9 +142,13 @@ func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w wri
 			}
 			result := datastructures.MongoCompany{}
 			if err = cur.Decode(&result); err != nil {
-				log.Fatal(err)
+				// Skip records that fail to decode (e.g., malformed _id fields)
+				log.Printf("WARNING: Skipping company record due to decode error: %v", err)
+				skipChannel <- 1
+				continue
 			}
 			companies[itx] = &result
+			itx++
 			totalProcessed++
 		}
 

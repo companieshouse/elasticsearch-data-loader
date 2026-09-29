@@ -19,9 +19,9 @@ type Client interface {
 
 // ClientImpl provides a concrete implementation of the Client interface
 type ClientImpl struct {
-	w                   write.Writer
-	signedRequester     Requester // For OpenSearch (may use SigV4 if enabled)
-	unsignedRequester   Requester // For AlphaKey (always unsigned)
+	w                 write.Writer
+	signedRequester   Requester // For OpenSearch (may use SigV4 if enabled)
+	unsignedRequester Requester // For AlphaKey (always unsigned)
 }
 
 // NewClient returns a concrete implementation of the Client interface
@@ -29,7 +29,7 @@ func NewClient(writer write.Writer) Client {
 
 	return &ClientImpl{
 		w:                 writer,
-		signedRequester:   NewRequester(),      // Use configured requester (signed or unsigned based on USE_AWS_SIGV4)
+		signedRequester:   NewRequester(),         // Use configured requester (signed or unsigned based on USE_AWS_SIGV4)
 		unsignedRequester: NewUnsignedRequester(), // Always unsigned for AlphaKey
 	}
 }
