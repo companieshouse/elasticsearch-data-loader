@@ -1,9 +1,25 @@
 # Build artifacts
 companybindex/companybindex
+companybindex_linux
+companybindex_test
+companybindex/companybindex_nocgo
+companybindex_linux
+companybindex_test
+companybindex/companybindex_nocgo
 
 
 # Lint output
 lint.txt
+
+# Coverage reports
+coverage_report.html
+eshttp_coverage.html
+eshttp_coverage.out
+
+# Coverage reports
+coverage_report.html
+eshttp_coverage.html
+eshttp_coverage.out
 
 # GoLand files
 .idea/
