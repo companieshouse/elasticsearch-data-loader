@@ -199,6 +199,34 @@ func TestUnitFillBatch(t *testing.T) {
 	})
 }
 
+func TestUnitRecreateIndexWrapper(t *testing.T) {
+
+	Convey("Should call recreateIndexWithRequester through wrapper", t, func() {
+
+		// Create temp config directory with minimal mapping
+		cwd, err := os.Getwd()
+		So(err, ShouldBeNil)
+		defer os.Chdir(cwd)
+
+		tmpDir := t.TempDir()
+		configDir := tmpDir + "/config"
+		os.MkdirAll(configDir, 0755)
+		os.Chdir(tmpDir)
+
+		// Create minimal mapping file but point to non-existent server
+		mappingContent := []byte(`{"settings":{"number_of_shards":1}}`)
+		err = os.WriteFile(configDir+"/search_scheme.json", mappingContent, 0644)
+		So(err, ShouldBeNil)
+
+		// Call recreateIndex wrapper with non-existent server
+		// It will fail to connect but that tests the wrapper works
+		err = recreateIndex("http://localhost:19999", "test-index")
+
+		// Should have connection error since server doesn't exist
+		So(err, ShouldNotBeNil)
+	})
+}
+
 func TestUnitRecreateIndex(t *testing.T) {
 
 	Convey("Should handle missing schema file error", t, func() {
@@ -726,6 +754,47 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 		},
 			ShouldPanicWith,
 			"error inserting doc (status 500): Test generated error")
+
+	})
+
+	Convey("Should use Error.Type when Reason is empty", t, func() {
+
+		restoreLogFatalf := stubLogFatalf()
+		defer restoreLogFatalf()
+
+		ctrl := gomock.NewController(t)
+		client := eshttp.NewMockClient(ctrl)
+
+		// Create a custom unmarshaler that returns error with Type but no Reason
+		realUnmarshal := unmarshal
+		unmarshal = func(data []byte, v interface{}) error {
+			bulkResponse := v.(*esBulkResponse)
+			bulkResponse.Errors = true
+			bulkResponse.Items = make([]esBulkItemResponse, 1)
+			bulkResponse.Items[0] =
+				map[string]esBulkItemResponseData{
+					"create": {
+						Index:  "Index",
+						ID:     "Id",
+						Status: 400,
+						Error: ErrorDetail{
+							Type:   "type_error",
+							Reason: "", // Empty reason - should use Type
+						},
+					},
+				}
+			return nil
+		}
+		defer func() { unmarshal = realUnmarshal }()
+
+		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
+			Return([]byte("bulk"), nil)
+
+		So(func() {
+			submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		},
+			ShouldPanicWith,
+			"error inserting doc (status 400): type_error")
 
 	})
 }

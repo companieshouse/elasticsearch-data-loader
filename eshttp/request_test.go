@@ -2,6 +2,7 @@ package eshttp
 
 import (
 	"bytes"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -401,5 +402,49 @@ func TestUnitSignedRequest_DoPreservesPUTMethod(t *testing.T) {
 
 	if resp.StatusCode != http.StatusCreated {
 		t.Errorf("expected status 201, got %d", resp.StatusCode)
+	}
+}
+
+func TestUnitSignedRequest_DoSigningError(t *testing.T) {
+	// Test that Do() properly handles signing errors
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	// Create a signer that fails
+	failingSigner := &failingSigner{}
+	requester := &SignedRequest{
+		signer:     failingSigner,
+		httpClient: &http.Client{},
+	}
+
+	req, _ := http.NewRequest(http.MethodDelete, server.URL, nil)
+
+	_, err := requester.Do(req)
+	if err == nil || err.Error() != "signing error" {
+		t.Errorf("expected 'signing error' error, got %v", err)
+	}
+}
+
+// failingSigner is a mock signer that fails on SignRequest
+type failingSigner struct{}
+
+func (f *failingSigner) SignRequest(req *http.Request) error {
+	return errors.New("signing error")
+}
+
+func TestUnitSignedRequest_PostSigningError(t *testing.T) {
+	// Test that Post() properly handles signing errors
+	failingSigner := &failingSigner{}
+	requester := &SignedRequest{
+		signer:     failingSigner,
+		httpClient: &http.Client{},
+	}
+
+	body := []byte(`{"test": "data"}`)
+	_, err := requester.Post(body, "http://localhost:9200")
+	if err == nil || err.Error() != "signing error" {
+		t.Errorf("expected 'signing error' error, got %v", err)
 	}
 }
