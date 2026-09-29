@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,186 @@ import (
 	"reflect"
 	"testing"
 )
+
+// Mock MongoDB cursor for testing fillBatch
+type MockMongoCursor struct {
+	nextReturnValues []bool
+	decodeErrors     []error
+	nextIndex        int
+	companies        []*datastructures.MongoCompany
+}
+
+func (m *MockMongoCursor) Next(ctx context.Context) bool {
+	if m.nextIndex >= len(m.nextReturnValues) {
+		return false
+	}
+	result := m.nextReturnValues[m.nextIndex]
+	m.nextIndex++
+	return result
+}
+
+func (m *MockMongoCursor) Decode(v interface{}) error {
+	if len(m.decodeErrors) > 0 {
+		err := m.decodeErrors[0]
+		m.decodeErrors = m.decodeErrors[1:]
+		if err != nil {
+			// Return error without consuming a company
+			return err
+		}
+	}
+	// Successfully decode if no error
+	if len(m.companies) > 0 {
+		companyPtr := v.(*datastructures.MongoCompany)
+		*companyPtr = *m.companies[0]
+		m.companies = m.companies[1:]
+	}
+	return nil
+}
+
+func (m *MockMongoCursor) Err() error {
+	return nil
+}
+
+func (m *MockMongoCursor) Close(ctx context.Context) error {
+	return nil
+}
+
+func TestUnitFillBatch(t *testing.T) {
+
+	Convey("Should successfully fill batch with valid companies", t, func() {
+
+		restoreSkipChannel := stubSkipChannel()
+		defer restoreSkipChannel()
+
+		ctx := context.Background()
+		cursor := &MockMongoCursor{
+			nextReturnValues: []bool{true, true},
+			decodeErrors:     []error{nil, nil},
+			companies: []*datastructures.MongoCompany{
+				{ID: "comp1", Data: &datastructures.MongoData{CompanyName: "Company 1"}},
+				{ID: "comp2", Data: &datastructures.MongoData{CompanyName: "Company 2"}},
+			},
+		}
+		companies := make([]*datastructures.MongoCompany, 500)
+
+		itx, totalProcessed := fillBatch(cursor, ctx, companies, 0)
+
+		So(itx, ShouldEqual, 2)
+		So(totalProcessed, ShouldEqual, 2)
+		So(companies[0].ID, ShouldEqual, "comp1")
+		So(companies[1].ID, ShouldEqual, "comp2")
+	})
+
+	Convey("Should skip records that fail to decode", t, func() {
+
+		restoreSkipChannel := stubSkipChannel()
+		defer restoreSkipChannel()
+
+		ctx := context.Background()
+		cursor := &MockMongoCursor{
+			nextReturnValues: []bool{true, true, true},
+			decodeErrors: []error{
+				nil,
+				errors.New("cannot decode embedded document into a string type"),
+				nil,
+			},
+			companies: []*datastructures.MongoCompany{
+				{ID: "comp1", Data: &datastructures.MongoData{CompanyName: "Company 1"}},
+				// Second record will fail decode
+				{ID: "comp3", Data: &datastructures.MongoData{CompanyName: "Company 3"}},
+			},
+		}
+		companies := make([]*datastructures.MongoCompany, 500)
+
+		// Run in goroutine because fillBatch sends to skipChannel which blocks
+		var itx, totalProcessed int
+		done := make(chan bool)
+		go func() {
+			itx, totalProcessed = fillBatch(cursor, ctx, companies, 0)
+			done <- true
+		}()
+
+		// Read skip message from channel
+		<-skipChannel
+		// Wait for goroutine to finish
+		<-done
+
+		So(itx, ShouldEqual, 2)
+		So(totalProcessed, ShouldEqual, 2)
+		So(companies[0].ID, ShouldEqual, "comp1")
+		So(companies[1].ID, ShouldEqual, "comp3")
+	})
+
+	Convey("Should respect company limit", t, func() {
+
+		restoreSkipChannel := stubSkipChannel()
+		defer restoreSkipChannel()
+
+		// Save and restore companyLimit
+		savedCompanyLimit := companyLimit
+		companyLimit = 2
+		defer func() { companyLimit = savedCompanyLimit }()
+
+		ctx := context.Background()
+		cursor := &MockMongoCursor{
+			nextReturnValues: []bool{true, true, true},
+			decodeErrors:     []error{nil, nil, nil},
+			companies: []*datastructures.MongoCompany{
+				{ID: "comp1", Data: &datastructures.MongoData{CompanyName: "Company 1"}},
+				{ID: "comp2", Data: &datastructures.MongoData{CompanyName: "Company 2"}},
+				{ID: "comp3", Data: &datastructures.MongoData{CompanyName: "Company 3"}},
+			},
+		}
+		companies := make([]*datastructures.MongoCompany, 500)
+
+		itx, totalProcessed := fillBatch(cursor, ctx, companies, 0)
+
+		So(itx, ShouldEqual, 2)
+		So(totalProcessed, ShouldEqual, 2)
+	})
+
+	Convey("Should handle end of cursor", t, func() {
+
+		restoreSkipChannel := stubSkipChannel()
+		defer restoreSkipChannel()
+
+		ctx := context.Background()
+		cursor := &MockMongoCursor{
+			nextReturnValues: []bool{true, false},
+			decodeErrors:     []error{nil},
+			companies: []*datastructures.MongoCompany{
+				{ID: "comp1", Data: &datastructures.MongoData{CompanyName: "Company 1"}},
+			},
+		}
+		companies := make([]*datastructures.MongoCompany, 500)
+
+		itx, totalProcessed := fillBatch(cursor, ctx, companies, 0)
+
+		So(itx, ShouldEqual, 1)
+		So(totalProcessed, ShouldEqual, 1)
+	})
+
+	Convey("Should increment skip channel when decode fails", t, func() {
+
+		restoreSkipChannel := stubSkipChannel()
+		defer restoreSkipChannel()
+
+		ctx := context.Background()
+		cursor := &MockMongoCursor{
+			nextReturnValues: []bool{true},
+			decodeErrors:     []error{errors.New("decode error")},
+			companies:        []*datastructures.MongoCompany{},
+		}
+		companies := make([]*datastructures.MongoCompany, 500)
+
+		// Run in goroutine to read from channel
+		go fillBatch(cursor, ctx, companies, 0)
+
+		// Verify skip channel received increment
+		skipCount := <-skipChannel
+		So(skipCount, ShouldEqual, 1)
+	})
+}
 
 func TestUnitGetAlphaKeys(t *testing.T) {
 
