@@ -131,26 +131,7 @@ func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w wri
 	totalProcessed := 0
 	for {
 		companies := make([]*datastructures.MongoCompany, mongoSize)
-		itx := 0
-		for itx < len(companies) {
-			// Check if we've reached the company limit
-			if companyLimit > 0 && totalProcessed >= companyLimit {
-				break
-			}
-			if !cur.Next(ctx3) {
-				break
-			}
-			result := datastructures.MongoCompany{}
-			if err = cur.Decode(&result); err != nil {
-				// Skip records that fail to decode (e.g., malformed _id fields)
-				log.Printf("WARNING: Skipping company record due to decode error: %v", err)
-				skipChannel <- 1
-				continue
-			}
-			companies[itx] = &result
-			itx++
-			totalProcessed++
-		}
+		itx, totalProcessed := fillBatch(cur, ctx3, companies, totalProcessed)
 
 		if err := cur.Err(); err != nil {
 			fatalf("error iterating the collection: %s", err)
@@ -169,6 +150,33 @@ func sendCompaniesToES(cur *mongo.Cursor, ctx3 context.Context, err error, w wri
 			break
 		}
 	}
+}
+
+// fillBatch reads companies from MongoDB cursor into the companies array,
+// skipping records that fail to decode. Returns the count of successful reads
+// and updated total processed count.
+func fillBatch(cur *mongo.Cursor, ctx3 context.Context, companies []*datastructures.MongoCompany, totalProcessed int) (int, int) {
+	itx := 0
+	for itx < len(companies) {
+		// Check if we've reached the company limit
+		if companyLimit > 0 && totalProcessed >= companyLimit {
+			break
+		}
+		if !cur.Next(ctx3) {
+			break
+		}
+		result := datastructures.MongoCompany{}
+		if err := cur.Decode(&result); err != nil {
+			// Skip records that fail to decode (e.g., malformed _id fields)
+			log.Printf("WARNING: Skipping company record due to decode error: %v", err)
+			skipChannel <- 1
+			continue
+		}
+		companies[itx] = &result
+		itx++
+		totalProcessed++
+	}
+	return itx, totalProcessed
 }
 
 // ---------------------------------------------------------------------------
