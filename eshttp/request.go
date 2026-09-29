@@ -9,7 +9,7 @@ import (
 	"os"
 
 	"github.com/aws/aws-sdk-go-v2/config"
-	"github.com/opensearch-project/opensearch-go/v2"
+	"github.com/opensearch-project/opensearch-go/v2/signer"
 	requestsigner "github.com/opensearch-project/opensearch-go/v2/signer/awsv2"
 )
 
@@ -25,7 +25,8 @@ type UnsignedRequest struct {
 
 // SignedRequest provides AWS SigV4-signed HTTP requests (used for OpenSearch only)
 type SignedRequest struct {
-	client *opensearch.Client
+	signer     signer.Signer
+	httpClient *http.Client
 }
 
 // NewRequester returns the appropriate Requester based on USE_AWS_SIGV4 env var
@@ -65,18 +66,11 @@ func createSignedRequester() Requester {
 		return &UnsignedRequest{httpClient: &http.Client{}}
 	}
 
-	// Note: client is only used to access the Transport for signing.
-	// The actual request execution still uses our custom Post method.
-	client, err := opensearch.NewClient(opensearch.Config{
-		Signer: signer,
-	})
-	if err != nil {
-		log.Printf("warning: failed to create OpenSearch client: %v, falling back to unsigned requests", err)
-		return &UnsignedRequest{httpClient: &http.Client{}}
-	}
-
 	log.Printf("info: AWS SigV4 signing enabled for OpenSearch requests")
-	return &SignedRequest{client: client}
+	return &SignedRequest{
+		signer:     signer,
+		httpClient: &http.Client{},
+	}
 }
 
 // Post performs an unsigned POST request
@@ -86,8 +80,12 @@ func (req *UnsignedRequest) Post(body []byte, uri string) (*http.Response, error
 
 // Post performs a SigV4-signed POST request for OpenSearch
 func (req *SignedRequest) Post(body []byte, uri string) (*http.Response, error) {
-	if req.client == nil {
-		return nil, errors.New("OpenSearch client not available")
+	if req.signer == nil {
+		return nil, errors.New("AWS SigV4 signer not available")
+	}
+
+	if req.httpClient == nil {
+		return nil, errors.New("HTTP client not available")
 	}
 
 	httpReq, err := http.NewRequestWithContext(context.Background(), "POST", uri, bytes.NewReader(body))
@@ -97,11 +95,12 @@ func (req *SignedRequest) Post(body []byte, uri string) (*http.Response, error) 
 
 	httpReq.Header.Set("Content-Type", applicationJSON)
 
-	// Use the OpenSearch client's transport to sign and execute the request
-	transport := req.client.Transport
-	if transport == nil {
-		return nil, errors.New("OpenSearch client transport not available")
+	// Sign the request using AWS SigV4
+	err = req.signer.SignRequest(httpReq)
+	if err != nil {
+		return nil, err
 	}
 
-	return transport.Perform(httpReq)
+	// Execute the request using our http client
+	return req.httpClient.Do(httpReq)
 }
