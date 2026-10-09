@@ -1,3 +1,4 @@
+data "aws_caller_identity" "current" {}
 
 data "vault_generic_secret" "stack_secrets" {
   path = "applications/${var.aws_profile}/${var.environment}/${local.stack_name}-stack"
@@ -83,5 +84,12 @@ data "aws_iam_policy_document" "task_policy" {
     effect    = "Allow"
     actions   = ["es:ESHttpGet", "es:ESHttpPost", "es:ESHttpHead", "es:ESHttpPut", "es:ESHttpDelete"]
     resources = [for domain in data.aws_opensearch_domain.opensearch : "${domain.arn}/*"]
+  }
+
+  statement {
+    sid       = "AllowScaleECSService"
+    effect    = "Allow"
+    actions   = ["ecs:UpdateService"]
+    resources = ["arn:aws:ecs:${var.aws_region}:${data.aws_caller_identity.current.account_id}:service/${local.name_prefix}-cluster/${var.environment}-${local.service_name}"]
   }
 }

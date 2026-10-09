@@ -103,4 +103,11 @@ if [ $exit_code -eq 0 ]; then
   sleep 300
 fi
 
+  echo "Setting desired count of ECS service ${ECS_SERVICE} to 0"
+  aws ecs update-service \
+    --cluster "${ECS_CLUSTER}" \
+    --service "${ECS_SERVICE}" \
+    --desired-count 0 \
+    --region "${AWS_REGION}"
+
 exit $exit_code
