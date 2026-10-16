@@ -5,7 +5,10 @@ import (
 	"strings"
 )
 
-var nonWordEndRegex = regexp.MustCompile(`[^A-Za-z0-9_]+$`)
+var (
+	wordRegex      = regexp.MustCompile(`\S+`)
+	namePartsRegex = regexp.MustCompile(`(.+?)(\W*)$`)
+)
 
 var companyNameEndings = [...]string{
 	"AEIE",
@@ -81,6 +84,14 @@ var companyNameEndings = [...]string{
 	"UNLTD",
 }
 
+var companyNameEndingSet = func() map[string]struct{} {
+	endings := make(map[string]struct{}, len(companyNameEndings))
+	for _, ending := range companyNameEndings {
+		endings[ending] = struct{}{}
+	}
+	return endings
+}()
+
 // Formatter provides an interface by which to perform string formatting operations
 type Formatter interface {
 	SplitCompanyNameEndings(name string) (string, string)
@@ -97,22 +108,22 @@ func NewFormatter() Formatter {
 
 // SplitCompanyNameEndings splits company name into nameStart and nameEnding in order to remove common name endings
 func (f *Format) SplitCompanyNameEndings(name string) (string, string) {
-	var nameStart, nameEnding string
+	groups := namePartsRegex.FindStringSubmatch(name)
+	if len(groups) < 3 {
+		return name, ""
+	}
 
-	nameStart = name
+	clean := groups[1]
+	allWords := wordRegex.FindAllString(clean, -1)
 
-	//Strip trailing non-word characters [^a-zA-Z0-9_]
-	stripped := nonWordEndRegex.ReplaceAllString(name, "")
-
-	//Scan company name for name ending and remove suffix
-	for _, cne := range companyNameEndings {
-		if strings.HasSuffix(stripped, cne) {
-			nameStart = strings.TrimSuffix(stripped, " "+cne)
-			// Keep the actual name ending by extracted the name start
-			nameEnding = name[len(nameStart):]
-			break
+	for i := 1; i < len(allWords); i++ {
+		// Try longest whole-word suffix first so we don't match partial endings (e.g. LTD inside UNLTD).
+		candidate := strings.Join(allWords[i:], " ")
+		if _, ok := companyNameEndingSet[candidate]; ok {
+			nameStart := strings.TrimSpace(strings.TrimSuffix(clean, candidate))
+			return nameStart, name[len(nameStart):]
 		}
 	}
 
-	return nameStart, nameEnding
+	return name, ""
 }

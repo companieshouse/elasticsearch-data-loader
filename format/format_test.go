@@ -7,26 +7,35 @@ import (
 )
 
 func TestUnitSplitCompanyNameEndings(t *testing.T) {
-
 	f := NewFormatter()
 
-	Convey("Given a company name of 'TEST LIMITED'", t, func() {
+	Convey("SplitCompanyNameEndings should split standard endings", t, func() {
+		nameStart, nameEnd := f.SplitCompanyNameEndings("TEST LIMITED")
+		So(nameStart, ShouldEqual, "TEST")
+		So(nameEnd, ShouldEqual, " LIMITED")
+	})
 
-		coName := "TEST LIMITED"
+	Convey("SplitCompanyNameEndings should prefer the longest valid ending", t, func() {
+		nameStart, nameEnd := f.SplitCompanyNameEndings("TEST PUBLIC LIMITED COMPANY")
+		So(nameStart, ShouldEqual, "TEST")
+		So(nameEnd, ShouldEqual, " PUBLIC LIMITED COMPANY")
+	})
 
-		Convey("When SplitCompanyNameEndings is called", func() {
+	Convey("SplitCompanyNameEndings should not treat partial token matches as endings", t, func() {
+		nameStart, nameEnd := f.SplitCompanyNameEndings("TEST UNLTD")
+		So(nameStart, ShouldEqual, "TEST")
+		So(nameEnd, ShouldEqual, " UNLTD")
+	})
 
-			nameStart, nameEnd := f.SplitCompanyNameEndings(coName)
+	Convey("SplitCompanyNameEndings should preserve trailing punctuation on endings", t, func() {
+		nameStart, nameEnd := f.SplitCompanyNameEndings("TEST PCC LTD...")
+		So(nameStart, ShouldEqual, "TEST")
+		So(nameEnd, ShouldEqual, " PCC LTD...")
+	})
 
-			Convey("Then nameStart should equal 'TEST'", func() {
-
-				So(nameStart, ShouldEqual, "TEST")
-
-				Convey("And nameEnd should equal ' LIMITED'", func() {
-
-					So(nameEnd, ShouldEqual, " LIMITED")
-				})
-			})
-		})
+	Convey("SplitCompanyNameEndings should return original name when no ending is present", t, func() {
+		nameStart, nameEnd := f.SplitCompanyNameEndings("TEST HOLDINGS")
+		So(nameStart, ShouldEqual, "TEST HOLDINGS")
+		So(nameEnd, ShouldEqual, "")
 	})
 }
