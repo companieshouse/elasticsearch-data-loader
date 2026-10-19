@@ -80,6 +80,9 @@ var companyNameEndings = [...]string{
 	"PUBLIC LIMITED COMPANY THE",
 	"PUBLIC LIMITED COMPANY",
 	"PUBLIC LIMITED COMPANY.THE",
+	"SE",
+	"UK SOCIETAS",
+	"UKEIG",
 	"UNLIMITED",
 	"UNLTD",
 }
@@ -109,21 +112,18 @@ func NewFormatter() Formatter {
 // SplitCompanyNameEndings splits company name into nameStart and nameEnding in order to remove common name endings
 func (f *Format) SplitCompanyNameEndings(name string) (string, string) {
 	groups := namePartsRegex.FindStringSubmatch(name)
-	if len(groups) < 3 {
+	if groups == nil {
 		return name, ""
 	}
+	clean, dirtyEnd := groups[1], groups[2]
 
-	clean := groups[1]
-	allWords := wordRegex.FindAllString(clean, -1)
-
-	for i := 1; i < len(allWords); i++ {
-		// Try longest whole-word suffix first so we don't match partial endings (e.g. LTD inside UNLTD).
-		candidate := strings.Join(allWords[i:], " ")
-		if _, ok := companyNameEndingSet[candidate]; ok {
-			nameStart := strings.TrimSpace(strings.TrimSuffix(clean, candidate))
-			return nameStart, name[len(nameStart):]
+	idx := wordRegex.FindAllStringIndex(clean, -1)
+	for i := 1; i < len(idx); i++ {
+		// Slice the original string from the start of word i, normalising inner whitespace.
+		ending := strings.Join(strings.Fields(clean[idx[i][0]:]), " ")
+		if _, ok := companyNameEndingSet[ending]; ok {
+			return strings.TrimSpace(clean[:idx[i][0]]), ending + dirtyEnd
 		}
 	}
-
 	return name, ""
 }
