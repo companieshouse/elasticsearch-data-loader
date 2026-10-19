@@ -50,12 +50,15 @@ docker run --rm \
   <your-image>:<tag>
 ```
 
+## Running in AWS ECS
 
-* Anything to be executed should be executed from the project root — ie this directory.
+Use the ECS service to run this as a one-off batch load.
 
-* The script `run-elastic-search.sh` sets up an index with the correct settings and mappings required for
-search using the config/all_scheme.json file. It then calls the relevant go scripts (companybindex) which will copy and transforms data from mongo db to ElasticSearch.
+1. Set the ECS service task count to `1` to start a run.
+2. Monitor task logs in CloudWatch until the load completes successfully.
+3. After a successful run, the service will automatically scale back (roll back) to task count `0`.
 
-* `run-elastic-search.sh` will ask for several parameters, to view these use the help parameter `-h`
+### Staging permissions
 
+For the staging environment, a member of the FESS team must start the run because they have the required permissions.
 
