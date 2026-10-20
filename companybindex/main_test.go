@@ -696,8 +696,9 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
 			Return([]byte("bulk"), nil)
 
-		submissionFailed := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		submissionFailed, skippedCount := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
 		So(submissionFailed, ShouldEqual, false)
+		So(skippedCount, ShouldEqual, 0)
 	})
 
 	Convey("Should report bulk submission failure", t, func() {
@@ -708,8 +709,9 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
 			Return([]byte("bulk"), errors.New("Test generated error"))
 
-		submissionFailed := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		submissionFailed, skippedCount := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
 		So(submissionFailed, ShouldEqual, true)
+		So(skippedCount, ShouldEqual, 0)
 	})
 
 	Convey("Should handle failure to unmarshal bulk response by exiting program", t, func() {
@@ -753,7 +755,7 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 			submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
 		},
 			ShouldPanicWith,
-			"error inserting doc (status 500): Test generated error")
+			"error inserting doc (status 500): [Id]: Test generated error")
 
 	})
 
@@ -794,7 +796,46 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 			submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
 		},
 			ShouldPanicWith,
-			"error inserting doc (status 400): type_error")
+			"error inserting doc (status 400): [Id]: type_error")
+
+	})
+
+	Convey("Should skip 409 conflicts and continue", t, func() {
+
+		restoreSkipChannel := stubSkipChannel()
+		defer restoreSkipChannel()
+
+		ctrl := gomock.NewController(t)
+		client := eshttp.NewMockClient(ctrl)
+
+		realUnmarshal := unmarshal
+		unmarshal = func(data []byte, v interface{}) error {
+			bulkResponse := v.(*esBulkResponse)
+			bulkResponse.Errors = true
+			bulkResponse.Items = []esBulkItemResponse{
+				{
+					"create": {
+						Index:  "Index",
+						ID:     "SC640169",
+						Status: 409,
+						Error: ErrorDetail{
+							Type:   "version_conflict_engine_exception",
+							Reason: "document already exists",
+						},
+					},
+				},
+			}
+			return nil
+		}
+		defer func() { unmarshal = realUnmarshal }()
+
+		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
+			Return([]byte("bulk"), nil)
+
+		submissionFailed, skippedCount := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		So(submissionFailed, ShouldBeFalse)
+		So(skippedCount, ShouldEqual, 1)
+		So(<-skipChannel, ShouldEqual, 1)
 
 	})
 }
@@ -880,7 +921,7 @@ func stubJsonUnmarshalWithEsDocumentCreationResponseError() func() {
 func stubSkipChannel() func() {
 	// Stub out skipChannel
 	realSkipChannel := skipChannel
-	skipChannel = make(chan int)
+	skipChannel = make(chan int, 32)
 
 	// Return function to restore skipChannel
 	return func() { skipChannel = realSkipChannel }
