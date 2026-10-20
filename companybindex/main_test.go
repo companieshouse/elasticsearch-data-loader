@@ -838,6 +838,107 @@ func TestUnitSubmitBulkToES(t *testing.T) {
 		So(<-skipChannel, ShouldEqual, 1)
 
 	})
+
+	Convey("Should skip 409 conflicts using Error.Type when Reason is empty", t, func() {
+
+		restoreSkipChannel := stubSkipChannel()
+		defer restoreSkipChannel()
+
+		ctrl := gomock.NewController(t)
+		client := eshttp.NewMockClient(ctrl)
+
+		realUnmarshal := unmarshal
+		unmarshal = func(data []byte, v interface{}) error {
+			bulkResponse := v.(*esBulkResponse)
+			bulkResponse.Errors = true
+			bulkResponse.Items = []esBulkItemResponse{
+				{
+					"create": {
+						Index:  "Index",
+						ID:     "SC640170",
+						Status: 409,
+						Error: ErrorDetail{
+							Type:   "version_conflict_engine_exception",
+							Reason: "",
+						},
+					},
+				},
+			}
+			return nil
+		}
+		defer func() { unmarshal = realUnmarshal }()
+
+		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
+			Return([]byte("bulk"), nil)
+
+		submissionFailed, skippedCount := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		So(submissionFailed, ShouldBeFalse)
+		So(skippedCount, ShouldEqual, 1)
+		So(<-skipChannel, ShouldEqual, 1)
+
+	})
+
+	Convey("Should ignore non-create bulk items", t, func() {
+
+		ctrl := gomock.NewController(t)
+		client := eshttp.NewMockClient(ctrl)
+
+		realUnmarshal := unmarshal
+		unmarshal = func(data []byte, v interface{}) error {
+			bulkResponse := v.(*esBulkResponse)
+			bulkResponse.Errors = true
+			bulkResponse.Items = []esBulkItemResponse{
+				{
+					"index": {
+						Index:  "Index",
+						ID:     "SC000001",
+						Status: 201,
+					},
+				},
+			}
+			return nil
+		}
+		defer func() { unmarshal = realUnmarshal }()
+
+		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
+			Return([]byte("bulk"), nil)
+
+		submissionFailed, skippedCount := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		So(submissionFailed, ShouldBeFalse)
+		So(skippedCount, ShouldEqual, 0)
+
+	})
+
+	Convey("Should continue when create item status is 201 inside errors payload", t, func() {
+
+		ctrl := gomock.NewController(t)
+		client := eshttp.NewMockClient(ctrl)
+
+		realUnmarshal := unmarshal
+		unmarshal = func(data []byte, v interface{}) error {
+			bulkResponse := v.(*esBulkResponse)
+			bulkResponse.Errors = true
+			bulkResponse.Items = []esBulkItemResponse{
+				{
+					"create": {
+						Index:  "Index",
+						ID:     "SC000002",
+						Status: 201,
+					},
+				},
+			}
+			return nil
+		}
+		defer func() { unmarshal = realUnmarshal }()
+
+		client.EXPECT().SubmitBulkToES([]byte("bulk"), []byte("companyNumbers"), esDestURL, esDestIndex).
+			Return([]byte("bulk"), nil)
+
+		submissionFailed, skippedCount := submitBulkToES(nil, client, []byte("bulk"), []byte("companyNumbers"))
+		So(submissionFailed, ShouldBeFalse)
+		So(skippedCount, ShouldEqual, 0)
+
+	})
 }
 
 func stubJsonMarshal() func() {

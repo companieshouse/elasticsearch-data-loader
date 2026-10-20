@@ -337,39 +337,43 @@ func submitBulkToES(err error, c eshttp.Client, bulk []byte, companyNumbers []by
 	}
 
 	if bulkRes.Errors {
-		skippedCount := 0
-		for _, r := range bulkRes.Items {
-			item, ok := r["create"]
-			if !ok {
-				continue
-			}
-
-			if item.Status == 201 {
-				continue
-			}
-
-			// Duplicate document IDs should not fail the full load.
-			if item.Status == http.StatusConflict {
-				errorMsg := item.Error.Reason
-				if errorMsg == "" {
-					errorMsg = item.Error.Type
-				}
-				log.Printf("WARNING: Skipping duplicate document ID %s (status %d): %s", item.ID, item.Status, errorMsg)
-				skipChannel <- 1
-				skippedCount++
-				continue
-			}
-
-			// Extract error reason from ErrorDetail
-			errorMsg := item.Error.Reason
-			if errorMsg == "" {
-				errorMsg = item.Error.Type
-			}
-			fatalf("error inserting doc (status %d): [%s]: %s", item.Status, item.ID, errorMsg)
-		}
-		return false, skippedCount
+		return false, countSkippedBulkConflicts(bulkRes.Items)
 	}
 	return false, 0
+}
+
+func countSkippedBulkConflicts(items []esBulkItemResponse) int {
+	skippedCount := 0
+	for _, response := range items {
+		item, ok := response["create"]
+		if !ok {
+			continue
+		}
+		skippedCount += handleBulkCreateItem(item)
+	}
+	return skippedCount
+}
+
+func handleBulkCreateItem(item esBulkItemResponseData) int {
+	if item.Status == http.StatusCreated {
+		return 0
+	}
+
+	if item.Status == http.StatusConflict {
+		log.Printf("WARNING: Skipping duplicate document ID %s (status %d): %s", item.ID, item.Status, getBulkErrorMessage(item.Error))
+		skipChannel <- 1
+		return 1
+	}
+
+	fatalf("error inserting doc (status %d): [%s]: %s", item.Status, item.ID, getBulkErrorMessage(item.Error))
+	return 0
+}
+
+func getBulkErrorMessage(errDetail ErrorDetail) string {
+	if errDetail.Reason != "" {
+		return errDetail.Reason
+	}
+	return errDetail.Type
 }
 
 func getAlphaKeys(
