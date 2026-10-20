@@ -312,18 +312,23 @@ func sendToES(companies *[]*datastructures.MongoCompany, length int, w write.Wri
 				companyNumbers,
 				target)
 
-		if submitBulkToES(err, c, bulk, companyNumbers) {
+		submissionFailed, skippedInBulk := submitBulkToES(err, c, bulk, companyNumbers)
+		if submissionFailed {
 			return
+		}
+		target -= skippedInBulk
+		if target < 0 {
+			target = 0
 		}
 
 		insertChannel <- target
 	}()
 }
 
-func submitBulkToES(err error, c eshttp.Client, bulk []byte, companyNumbers []byte) bool {
+func submitBulkToES(err error, c eshttp.Client, bulk []byte, companyNumbers []byte) (bool, int) {
 	b, err := c.SubmitBulkToES(bulk, companyNumbers, esDestURL, esDestIndex)
 	if err != nil {
-		return true
+		return true, 0
 	}
 
 	var bulkRes esBulkResponse
@@ -332,18 +337,43 @@ func submitBulkToES(err error, c eshttp.Client, bulk []byte, companyNumbers []by
 	}
 
 	if bulkRes.Errors {
-		for _, r := range bulkRes.Items {
-			if r["create"].Status != 201 {
-				// Extract error reason from ErrorDetail
-				errorMsg := r["create"].Error.Reason
-				if errorMsg == "" {
-					errorMsg = r["create"].Error.Type
-				}
-				fatalf("error inserting doc (status %d): %s", r["create"].Status, errorMsg)
-			}
-		}
+		return false, countSkippedBulkConflicts(bulkRes.Items)
 	}
-	return false
+	return false, 0
+}
+
+func countSkippedBulkConflicts(items []esBulkItemResponse) int {
+	skippedCount := 0
+	for _, response := range items {
+		item, ok := response["create"]
+		if !ok {
+			continue
+		}
+		skippedCount += handleBulkCreateItem(item)
+	}
+	return skippedCount
+}
+
+func handleBulkCreateItem(item esBulkItemResponseData) int {
+	if item.Status == http.StatusCreated {
+		return 0
+	}
+
+	if item.Status == http.StatusConflict {
+		log.Printf("WARNING: Skipping duplicate document ID %s (status %d): %s", item.ID, item.Status, getBulkErrorMessage(item.Error))
+		skipChannel <- 1
+		return 1
+	}
+
+	fatalf("error inserting doc (status %d): [%s]: %s", item.Status, item.ID, getBulkErrorMessage(item.Error))
+	return 0
+}
+
+func getBulkErrorMessage(errDetail ErrorDetail) string {
+	if errDetail.Reason != "" {
+		return errDetail.Reason
+	}
+	return errDetail.Type
 }
 
 func getAlphaKeys(
