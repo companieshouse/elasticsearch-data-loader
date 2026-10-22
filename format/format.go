@@ -109,19 +109,20 @@ func NewFormatter() Formatter {
 // SplitCompanyNameEndings splits company name into nameStart and nameEnding in order to remove common name endings
 func (f *Format) SplitCompanyNameEndings(name string) (string, string) {
 	groups := namePartsRegex.FindStringSubmatch(name)
-	if len(groups) < 3 {
+	if groups == nil {
 		return name, ""
 	}
 
 	clean := groups[1]
-	allWords := wordRegex.FindAllString(clean, -1)
+	dirtyEnd := groups[2]
+	wordIndexes := wordRegex.FindAllStringIndex(clean, -1)
 
-	for i := 1; i < len(allWords); i++ {
-		// Try longest whole-word suffix first so we don't match partial endings (e.g. LTD inside UNLTD).
-		candidate := strings.Join(allWords[i:], " ")
+	for i := 1; i < len(wordIndexes); i++ {
+		// Normalize spacing in suffix candidate while preserving original trailing punctuation.
+		candidate := strings.Join(strings.Fields(clean[wordIndexes[i][0]:]), " ")
 		if _, ok := companyNameEndingSet[candidate]; ok {
-			nameStart := strings.TrimSpace(strings.TrimSuffix(clean, candidate))
-			return nameStart, name[len(nameStart):]
+			nameStart := strings.TrimSpace(clean[:wordIndexes[i][0]])
+			return nameStart, candidate + dirtyEnd
 		}
 	}
 
