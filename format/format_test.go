@@ -15,6 +15,14 @@ func TestUnitSplitCompanyNameEndings(t *testing.T) {
 		So(nameEnd, ShouldEqual, "LIMITED")
 	})
 
+	Convey("SplitCompanyNameEndings should split the additional endings", t, func() {
+		for _, ending := range []string{"SE", "UK SOCIETAS", "UKEIG"} {
+			nameStart, nameEnd := f.SplitCompanyNameEndings("TEST " + ending)
+			So(nameStart, ShouldEqual, "TEST")
+			So(nameEnd, ShouldEqual, ending)
+		}
+	})
+
 	Convey("SplitCompanyNameEndings should prefer the longest valid ending", t, func() {
 		nameStart, nameEnd := f.SplitCompanyNameEndings("TEST PUBLIC LIMITED COMPANY")
 		So(nameStart, ShouldEqual, "TEST")

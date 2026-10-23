@@ -80,6 +80,9 @@ var companyNameEndings = [...]string{
 	"PUBLIC LIMITED COMPANY THE",
 	"PUBLIC LIMITED COMPANY",
 	"PUBLIC LIMITED COMPANY.THE",
+	"SE",
+	"UK SOCIETAS",
+	"UKEIG",
 	"UNLIMITED",
 	"UNLTD",
 }
