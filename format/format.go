@@ -5,7 +5,10 @@ import (
 	"strings"
 )
 
-var nonWordEndRegex = regexp.MustCompile(`[^A-Za-z0-9_]+$`)
+var (
+	wordRegex      = regexp.MustCompile(`\S+`)
+	namePartsRegex = regexp.MustCompile(`(.+?)(\W*)$`)
+)
 
 var companyNameEndings = [...]string{
 	"AEIE",
@@ -77,9 +80,20 @@ var companyNameEndings = [...]string{
 	"PUBLIC LIMITED COMPANY THE",
 	"PUBLIC LIMITED COMPANY",
 	"PUBLIC LIMITED COMPANY.THE",
+	"SE",
+	"UK SOCIETAS",
+	"UKEIG",
 	"UNLIMITED",
 	"UNLTD",
 }
+
+var companyNameEndingSet = func() map[string]struct{} {
+	endings := make(map[string]struct{}, len(companyNameEndings))
+	for _, ending := range companyNameEndings {
+		endings[ending] = struct{}{}
+	}
+	return endings
+}()
 
 // Formatter provides an interface by which to perform string formatting operations
 type Formatter interface {
@@ -97,22 +111,23 @@ func NewFormatter() Formatter {
 
 // SplitCompanyNameEndings splits company name into nameStart and nameEnding in order to remove common name endings
 func (f *Format) SplitCompanyNameEndings(name string) (string, string) {
-	var nameStart, nameEnding string
+	groups := namePartsRegex.FindStringSubmatch(name)
+	if groups == nil {
+		return name, ""
+	}
 
-	nameStart = name
+	clean := groups[1]
+	dirtyEnd := groups[2]
+	wordIndexes := wordRegex.FindAllStringIndex(clean, -1)
 
-	//Strip trailing non-word characters [^a-zA-Z0-9_]
-	stripped := nonWordEndRegex.ReplaceAllString(name, "")
-
-	//Scan company name for name ending and remove suffix
-	for _, cne := range companyNameEndings {
-		if strings.HasSuffix(stripped, cne) {
-			nameStart = strings.TrimSuffix(stripped, " "+cne)
-			// Keep the actual name ending by extracted the name start
-			nameEnding = name[len(nameStart):]
-			break
+	for i := 1; i < len(wordIndexes); i++ {
+		// Normalize spacing in suffix candidate while preserving original trailing punctuation.
+		candidate := strings.Join(strings.Fields(clean[wordIndexes[i][0]:]), " ")
+		if _, ok := companyNameEndingSet[candidate]; ok {
+			nameStart := strings.TrimSpace(clean[:wordIndexes[i][0]])
+			return nameStart, candidate + dirtyEnd
 		}
 	}
 
-	return nameStart, nameEnding
+	return name, ""
 }
