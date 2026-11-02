@@ -67,13 +67,14 @@ module "ecs-service" {
   use_set_environment_files = local.use_set_environment_files
 
   # Alpha key service sidecar
-  use_alphakey_sidecar = true
-  alphakey_version     = var.alphakey_version
-  alphakey_port        = local.alphakey_port
-  alphakey_cpus        = var.alphakey_cpus
-  alphakey_memory      = var.alphakey_memory
-  alphakey_environment = local.alphakey_environment
-  alphakey_secrets     = local.alphakey_secrets
+  use_alphakey_sidecar          = true
+  alphakey_version              = var.alphakey_version
+  alphakey_port                 = local.alphakey_port
+  alphakey_cpus                 = var.alphakey_cpus
+  alphakey_memory               = var.alphakey_memory
+  alphakey_environment          = local.alphakey_environment
+  alphakey_environment_filename = local.alphakey_environment_filename
+  alphakey_secrets              = local.alphakey_secrets
 
   create_service_dashboard = var.create_service_dashboard
 
