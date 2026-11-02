@@ -16,3 +16,6 @@ max_task_count = 1
 
 # Scheduled scaling of tasks
 service_autoscale_enabled  = false
+
+# alpha-key-service sidecar
+alphakey_version = "1.5.1"

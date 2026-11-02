@@ -12,3 +12,6 @@ required_memory = 32768
 desired_task_count = 0
 min_task_count = 0
 max_task_count = 1
+
+# alpha-key-service sidecar
+alphakey_version = "1.5.1"

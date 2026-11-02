@@ -6,6 +6,7 @@ locals {
   service_name               = "elasticsearch-data-loader"
   container_port             = "8080"
   docker_repo                = "elasticsearch-data-loader"
+  alphakey_port              = 11000
   kms_alias                  = "alias/${var.aws_profile}/environment-services-kms"
   vpc_name                   = local.stack_secrets["vpc_name"]
   app_environment_filename   = "elasticsearch-data-loader.env"
@@ -62,6 +63,9 @@ locals {
     { name : "ECS_CLUSTER", value : "${local.name_prefix}-cluster" },
     { name : "ECS_SERVICE", value : "${var.environment}-${local.service_name}" }
   ])
+
+  alphakey_environment = []
+  alphakey_secrets     = []
 
   default_tags = merge(
     module.iac_tags.tags,
