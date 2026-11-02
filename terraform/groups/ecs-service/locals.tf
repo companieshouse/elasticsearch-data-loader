@@ -1,17 +1,19 @@
 # Define all hardcoded local variable and local variables looked up from data resources
 locals {
-  stack_name                 = "search-service" # this must match the stack name the service deploys into
-  name_prefix                = "${local.stack_name}-${var.environment}"
-  global_prefix              = "global-${var.environment}"
-  service_name               = "elasticsearch-data-loader"
-  container_port             = "8080"
-  docker_repo                = "elasticsearch-data-loader"
-  kms_alias                  = "alias/${var.aws_profile}/environment-services-kms"
-  vpc_name                   = local.stack_secrets["vpc_name"]
-  app_environment_filename   = "elasticsearch-data-loader.env"
-  use_set_environment_files  = var.use_set_environment_files
-  application_subnet_ids     = data.aws_subnets.application.ids
-  application_subnet_pattern = local.stack_secrets["application_subnet_pattern"]
+  stack_name                    = "search-service" # this must match the stack name the service deploys into
+  name_prefix                   = "${local.stack_name}-${var.environment}"
+  global_prefix                 = "global-${var.environment}"
+  service_name                  = "elasticsearch-data-loader"
+  container_port                = "8080"
+  docker_repo                   = "elasticsearch-data-loader"
+  alphakey_port                 = 11000
+  alphakey_environment_filename = "alpha-key-service.env"
+  kms_alias                     = "alias/${var.aws_profile}/environment-services-kms"
+  vpc_name                      = local.stack_secrets["vpc_name"]
+  app_environment_filename      = "elasticsearch-data-loader.env"
+  use_set_environment_files     = var.use_set_environment_files
+  application_subnet_ids        = data.aws_subnets.application.ids
+  application_subnet_pattern    = local.stack_secrets["application_subnet_pattern"]
   # Set this to true if secrets are required and need to be retrieved from vault
   stack_secrets   = jsondecode(data.vault_generic_secret.stack_secrets.data_json)
   service_secrets = jsondecode(data.vault_generic_secret.service_secrets.data_json)
@@ -62,6 +64,11 @@ locals {
     { name : "ECS_CLUSTER", value : "${local.name_prefix}-cluster" },
     { name : "ECS_SERVICE", value : "${var.environment}-${local.service_name}" }
   ])
+
+  alphakey_environment = [
+    { name : "ALPHAKEY_SERVICE_PORT", value : tostring(local.alphakey_port) }
+  ]
+  alphakey_secrets     = []
 
   default_tags = merge(
     module.iac_tags.tags,

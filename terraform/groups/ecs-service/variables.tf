@@ -141,4 +141,23 @@ variable "opensearch_domain_names" {
   default     = ["alphabetical-search"]
   description = "The names of the OpenSearch domains to which the ECS tasks need access."
 }
-  
+
+# ------------------------------------------------------------------------------
+# Alpha key service sidecar
+# ------------------------------------------------------------------------------
+variable "alphakey_version" {
+  type        = string
+  description = "The version of the alpha-key-service container to run as a sidecar."
+}
+
+variable "alphakey_cpus" {
+  type        = number
+  description = "The required cpu resource for the alpha-key-service sidecar. 1024 here is 1 vCPU."
+  default     = 1024
+}
+
+variable "alphakey_memory" {
+  type        = number
+  description = "The required memory for the alpha-key-service sidecar."
+  default     = 2048
+}

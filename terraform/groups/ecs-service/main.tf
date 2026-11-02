@@ -18,7 +18,7 @@ terraform {
 }
 
 module "ecs-service" {
-  source = "git@github.com:companieshouse/terraform-modules//aws/ecs/ecs-service?ref=1.0.334"
+  source = "git@github.com:companieshouse/terraform-modules//aws/ecs/ecs-service?ref=1.0.446"
 
   # Environmental configuration
   environment             = var.environment
@@ -65,6 +65,16 @@ module "ecs-service" {
   task_secrets              = local.task_secrets
   app_environment_filename  = local.app_environment_filename
   use_set_environment_files = local.use_set_environment_files
+
+  # Alpha key service sidecar
+  use_alphakey_sidecar          = true
+  alphakey_version              = var.alphakey_version
+  alphakey_port                 = local.alphakey_port
+  alphakey_cpus                 = var.alphakey_cpus
+  alphakey_memory               = var.alphakey_memory
+  alphakey_environment          = local.alphakey_environment
+  alphakey_environment_filename = local.alphakey_environment_filename
+  alphakey_secrets              = local.alphakey_secrets
 
   create_service_dashboard = var.create_service_dashboard
 

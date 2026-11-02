@@ -5,9 +5,9 @@ aws_profile = "staging-eu-west-2"
 use_set_environment_files = true
 log_level = "trace"
 
-# default allocation
-required_cpus = 16384
-required_memory = 32768
+# default allocation (task total incl. alphakey sidecar: 16384 CPU, 32768 memory)
+required_cpus = 15360
+required_memory = 30720
 
 # scaling configs default
 desired_task_count = 0
