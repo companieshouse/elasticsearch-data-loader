@@ -6,7 +6,7 @@ locals {
   service_name                  = "elasticsearch-data-loader"
   container_port                = "8080"
   docker_repo                   = "elasticsearch-data-loader"
-  alphakey_port                 = 11000
+  alphakey_port                 = 8080  # alpha-key-service hardcodes server.port=8080 in docker_start.sh
   alphakey_environment_filename = "alpha-key-service.env"
   kms_alias                     = "alias/${var.aws_profile}/environment-services-kms"
   vpc_name                      = local.stack_secrets["vpc_name"]
@@ -65,9 +65,7 @@ locals {
     { name : "ECS_SERVICE", value : "${var.environment}-${local.service_name}" }
   ])
 
-  alphakey_environment = [
-    { name : "SERVER_PORT", value : tostring(local.alphakey_port) }
-  ]
+  alphakey_environment = []
   alphakey_secrets     = []
 
   default_tags = merge(
