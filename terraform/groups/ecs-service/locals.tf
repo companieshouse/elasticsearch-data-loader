@@ -66,7 +66,7 @@ locals {
   ])
 
   alphakey_environment = [
-    { name : "ALPHAKEY_SERVICE_PORT", value : tostring(local.alphakey_port) }
+    { name : "SERVER_PORT", value : tostring(local.alphakey_port) }
   ]
   alphakey_secrets     = []
 
