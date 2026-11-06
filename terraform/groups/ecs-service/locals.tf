@@ -65,7 +65,11 @@ locals {
     { name : "ECS_SERVICE", value : "${var.environment}-${local.service_name}" }
   ])
 
-  alphakey_environment = []
+  alphakey_environment = [
+    { name : "OTEL_LOG_ENABLED", value : tostring(var.alphakey_otel_log_enabled) },
+    { name : "OTEL_EXPORTER_OTLP_ENDPOINT", value : var.alphakey_otel_exporter_otlp_endpoint },
+    { name : "OTEL_LOGS_EXPORTER", value : "none" }
+  ]
   alphakey_secrets     = []
 
   default_tags = merge(

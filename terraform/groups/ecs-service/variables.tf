@@ -161,3 +161,14 @@ variable "alphakey_memory" {
   description = "The required memory for the alpha-key-service sidecar."
   default     = 2048
 }
+
+variable "alphakey_otel_exporter_otlp_endpoint" {
+  type        = string
+  description = "The OTLP endpoint for the alpha-key-service sidecar. The service fails to start if this is not set."
+}
+
+variable "alphakey_otel_log_enabled" {
+  type        = bool
+  default     = true
+  description = "Whether OpenTelemetry export is enabled for the alpha-key-service sidecar."
+}

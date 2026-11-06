@@ -12,3 +12,6 @@ required_memory = 30720
 desired_task_count = 0
 min_task_count = 0
 max_task_count = 1
+
+# alpha-key-service sidecar
+alphakey_otel_exporter_otlp_endpoint = "https://otel-collector.companieshouse.gov.uk"
