@@ -36,6 +36,7 @@ When the alpha key service is running then run the following command to drop the
 - `PASSWORD` -> `-p` (optional, must be set with `USERNAME`)
 - `CREATE_MAPPING` -> `-c` (default: `false`, valid: `true|false`)
 - `COMPANY_LIMIT` -> `-l` (default: `0`)
+- `ALPHAKEY_WAIT_SECONDS` (default: `120`): when `ALPHAKEY_URL` is `http://localhost:<port>` (alphakey running as an ECS sidecar), the script waits up to this long for the port to accept connections before starting the loader
 
 Example run:
 

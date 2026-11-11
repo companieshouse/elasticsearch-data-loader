@@ -66,6 +66,25 @@ if [ -n "$PASSWORD" ] && [ -z "$USERNAME" ]; then
   exit 1
 fi
 
+# When alphakey runs as an ECS sidecar it starts in parallel with this container,
+# so wait for it to accept connections before the loader makes its first request.
+ALPHAKEY_WAIT_SECONDS="${ALPHAKEY_WAIT_SECONDS:-120}"
+if [[ "$ALPHAKEY_URL" =~ ^http://(localhost|127\.0\.0\.1):([0-9]+) ]]; then
+  alphakey_host="${BASH_REMATCH[1]}"
+  alphakey_port="${BASH_REMATCH[2]}"
+  echo "Waiting up to ${ALPHAKEY_WAIT_SECONDS}s for alphakey sidecar on ${alphakey_host}:${alphakey_port}"
+  waited=0
+  until (exec 3<>"/dev/tcp/${alphakey_host}/${alphakey_port}") 2>/dev/null; do
+    if [ "$waited" -ge "$ALPHAKEY_WAIT_SECONDS" ]; then
+      echo "ERROR: alphakey sidecar not reachable at ${alphakey_host}:${alphakey_port} after ${ALPHAKEY_WAIT_SECONDS}s"
+      exit 1
+    fi
+    sleep 1
+    waited=$((waited + 1))
+  done
+  echo "alphakey sidecar reachable after ${waited}s"
+fi
+
 cmd=(
   "$RUN_SCRIPT"
   -s "$SEARCH"
